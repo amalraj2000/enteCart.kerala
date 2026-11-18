@@ -15,7 +15,7 @@ export default function MyOrders() {
   }, [user, page]);
 
   if (!authReady) return null;
-  if (!user) return <div className="card p-8 text-center"><p className="mb-3">Log in to see your orders.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Sign up</button></div>;
+  if (!user) return <div className="card p-8 text-center"><p className="mb-3">Log in to see your orders.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Register</button></div>;
   if (!orders) return <p>Loading…</p>;
   return (
     <div className="space-y-3">

@@ -27,7 +27,7 @@ export default function MyOrderPage({ params }: { params: Promise<{ id: string }
   }
 
   if (!authReady) return null;
-  if (!user) return <div className="card p-8 text-center"><p className="mb-3">Log in to view this order.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Sign up</button></div>;
+  if (!user) return <div className="card p-8 text-center"><p className="mb-3">Log in to view this order.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Register</button></div>;
   if (o === undefined) return <p>Loading…</p>;
   if (o === null) return <p className="card p-8 text-center text-gray-600">Order not found.</p>;
 

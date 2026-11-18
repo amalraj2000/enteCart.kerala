@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { vendorSql } from "@/lib/staffLabel";
 import { inr, productImages, type Product } from "@/lib/types";
 import Gallery from "@/components/Gallery";
 import WishlistButton from "@/components/WishlistButton";
@@ -11,7 +12,8 @@ export const dynamic = "force-dynamic";
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const c = await db();
-  const r = await c.execute({ sql: "SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?", args: [Number(id) || 0] });
+  const r = await c.execute({ sql: `SELECT p.*, c.name AS category_name, ${vendorSql("p.created_by", "cu")} AS vendor
+            FROM products p LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN users cu ON cu.id = p.created_by WHERE p.id = ?`, args: [Number(id) || 0] });
   const p = r.rows[0] as unknown as Product | undefined;
   if (!p) notFound();
   return (
@@ -23,6 +25,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <h1 className="text-2xl font-bold">{p.title}</h1>
           <WishlistButton productId={p.id} variant="inline" />
         </div>
+        {(p as Product & { vendor?: string | null }).vendor && <p className="mt-1 text-sm text-gray-500">Sold by <span className="font-semibold text-gray-700">{(p as Product & { vendor?: string | null }).vendor}</span></p>}
         <p className="mt-2 text-3xl font-extrabold text-brand-700">{inr(p.price)}</p>
         <p className="mt-4 whitespace-pre-line text-gray-700">{p.description}</p>
         <BuyPanel product={p} />

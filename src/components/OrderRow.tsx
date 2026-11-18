@@ -8,6 +8,7 @@ import type { FullOrder } from "@/lib/orderItems";
 export default function OrderRow({ o, href, extra, statusControl }: { o: FullOrder; href: string; extra?: React.ReactNode; statusControl?: React.ReactNode }) {
   const first = o.items[0];
   const more = o.items.length - 1;
+  const owners = [...new Set(o.items.map((i) => i.added_by).filter(Boolean))] as string[]; // only present on staff screens
   return (
     <div className="card flex flex-wrap items-center gap-4 p-4">
       <div className="relative shrink-0">
@@ -18,6 +19,7 @@ export default function OrderRow({ o, href, extra, statusControl }: { o: FullOrd
         <p className="truncate font-semibold">{first?.title || "Order"}{more > 0 && <span className="font-normal text-gray-500"> and {more} more</span>}</p>
         <p className="text-sm text-gray-500">Order #{o.id} · {o.created_at}</p>
         {extra}
+        {owners.length > 0 && <p className="text-xs text-gray-500">🛍️ Products by <span className="font-medium text-gray-700">{owners.join(", ")}</span></p>}
       </div>
       <div className="flex flex-col items-start gap-1 sm:items-end">
         {statusControl ?? <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(o.status)}`}>{o.status}</span>}

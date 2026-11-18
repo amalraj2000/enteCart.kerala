@@ -28,12 +28,12 @@ export default function AuthModal() {
     setBusy(false);
     if (!r.ok) { toast.error(d.error || "Something went wrong"); return; }
     if (d.admin) { // the admin's email: straight to the dashboard
-      toast.success("Welcome back, admin");
+      toast.success(d.welcome ? `Welcome, ${d.welcome}` : "Welcome back");
       setIdentifier(""); setPassword(""); setErrs({}); closeAuth();
       router.push("/admin"); router.refresh();
       return;
     }
-    toast.success(mode === "login" ? "Logged in successfully" : "Account created — welcome to enteCart.kerala!");
+    toast.success(mode === "login" ? "Logged in successfully" : "Registered successfully — welcome to enteCart.kerala!");
     setUser(d.user); setIdentifier(""); setPassword(""); setErrs({});
     afterAuth();
   }
@@ -43,7 +43,7 @@ export default function AuthModal() {
       <form onSubmit={submit} noValidate className="card max-h-[92vh] w-full max-w-sm space-y-4 overflow-y-auto p-5 sm:p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-brand-700">{mode === "login" ? "Welcome back" : "Create account"}</h2>
+            <h2 className="text-xl font-bold text-brand-700">{mode === "login" ? "Welcome back" : "Register"}</h2>
             <p className="text-sm text-gray-500">Use your 10-digit phone number or Gmail</p>
           </div>
           <button type="button" onClick={closeAuth} className="text-2xl leading-none text-gray-400 hover:text-gray-700" aria-label="Close">×</button>
@@ -58,11 +58,11 @@ export default function AuthModal() {
           <input id="auth-pw" className="input" type="password" placeholder="Password (6–72 characters)" value={password} maxLength={72} autoComplete={mode === "login" ? "current-password" : "new-password"} onChange={(e) => setPassword(e.target.value)} />
           <FieldError msg={errs.password} />
         </div>
-        <button className="btn-primary w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Log in" : "Sign up"}</button>
+        <button className="btn-primary w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Log in" : "Register"}</button>
         <p className="text-center text-sm text-gray-600">
           {mode === "login" ? "New here?" : "Already registered?"}{" "}
           <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => { setMode(mode === "login" ? "signup" : "login"); setErrs({}); }}>
-            {mode === "login" ? "Sign up" : "Log in"}
+            {mode === "login" ? "Register" : "Log in"}
           </button>
         </p>
       </form>

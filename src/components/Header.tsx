@@ -70,7 +70,7 @@ export default function Header() {
               )}
             </div>
           ) : (
-            <button className="btn-primary !min-h-10 !px-4" onClick={() => openAuth()}>Login<span className="hidden md:inline">&nbsp;/ Sign up</span></button>
+            <button className="btn-primary !min-h-10 !px-4" onClick={() => openAuth()}>Login<span className="hidden md:inline">&nbsp;/ Register</span></button>
           )}
         </div>
       </div>

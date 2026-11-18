@@ -9,7 +9,9 @@ import FieldError from "@/components/FieldError";
 import { CATEGORY_NAME_MAX, cleanCategoryName, validateCategoryName } from "@/lib/validate";
 import type { Category } from "@/lib/types";
 
-export default function CategoriesManager({ categories, pi }: { categories: Category[]; pi: PageInfo }) {
+type Cat = Category & { editable?: boolean; added_by_name?: string | null };
+
+export default function CategoriesManager({ categories, pi }: { categories: Cat[]; pi: PageInfo }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export default function CategoriesManager({ categories, pi }: { categories: Cate
     if (!r.ok) return toast.error(r.error || "Could not add category");
     toast.success(`Category "${n}" added`); setName(""); router.refresh();
   }
-  async function rename(c: Category) {
+  async function rename(c: Cat) {
     const n = cleanCategoryName(editName), v = validateCategoryName(n);
     setEditErr(v);
     if (v) return;
@@ -38,7 +40,7 @@ export default function CategoriesManager({ categories, pi }: { categories: Cate
     if (!r.ok) return toast.error(r.error || "Could not rename category");
     toast.success("Category renamed"); setEditing(null); router.refresh();
   }
-  async function del(c: Category) {
+  async function del(c: Cat) {
     if (!confirm(`Delete "${c.name}"?${c.count ? ` Its ${c.count} product(s) will become uncategorised.` : ""}`)) return;
     const r = await call(`/api/admin/categories/${c.id}`, "DELETE");
     r.ok ? toast.success("Category deleted") : toast.error(r.error || "Could not delete category");
@@ -59,7 +61,7 @@ export default function CategoriesManager({ categories, pi }: { categories: Cate
 
       <div className="card divide-y">
         {categories.map((c) => (
-          <div key={c.id} className="flex items-center gap-3 p-3">
+          <div key={c.id} className="flex flex-wrap items-center gap-3 p-3">
             {editing === c.id ? (
               <form className="flex-1" noValidate onSubmit={(e) => { e.preventDefault(); rename(c); }}>
                 <div className="flex gap-2">
@@ -73,10 +75,12 @@ export default function CategoriesManager({ categories, pi }: { categories: Cate
               <>
                 <div className="flex-1">
                   <p className="font-medium">{c.name}</p>
-                  <p className="text-xs text-gray-500">{c.count} product{c.count === 1 ? "" : "s"}</p>
+                  <p className="text-xs text-gray-500">{c.count} product{c.count === 1 ? "" : "s"} · Added by <span className="font-medium text-gray-600">{c.added_by_name || "—"}</span></p>
                 </div>
-                <button className="btn-outline !py-1" onClick={() => { setEditing(c.id); setEditName(c.name); setEditErr(null); }}>Rename</button>
-                <button className="btn-danger !py-1" onClick={() => del(c)}>Delete</button>
+                {c.editable === false
+                  ? <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Created by another admin">View only</span>
+                  : <><button className="btn-outline !py-1" onClick={() => { setEditing(c.id); setEditName(c.name); setEditErr(null); }}>Rename</button>
+                <button className="btn-danger !py-1" onClick={() => del(c)}>Delete</button></>}
               </>
             )}
           </div>

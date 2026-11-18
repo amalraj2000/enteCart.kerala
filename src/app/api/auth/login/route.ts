@@ -5,6 +5,7 @@ import { pwTag, setSession } from "@/lib/session";
 import { bad, clientIp, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
 import { firstError, str, validateAuth } from "@/lib/validate";
+import { welcomeName } from "@/lib/staffLabel";
 
 // Compared against when the account doesn't exist, so response time doesn't reveal which accounts exist.
 const DUMMY_HASH = "$2b$10$Yd4Q4fYuQgBJO7BpJ3/qi.g8H5D2SoOyMUNjXU/jHPOHF17RQj2ua";
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
     return bad("Too many login attempts. Please wait 10 minutes and try again.", 429);
 
   const c = await db();
-  const r = await c.execute({ sql: "SELECT id, email, phone, password, status, role FROM users WHERE email = ? OR phone = ?", args: [id, id] });
+  const r = await c.execute({ sql: "SELECT id, email, phone, password, status, role, name, vendor_name FROM users WHERE email = ? OR phone = ?", args: [id, id] });
   const u = r.rows[0];
   const ok = await bcrypt.compare(b.password as string, u ? String(u.password) : DUMMY_HASH);
   if (!u || !ok) return bad("Invalid phone/email or password", 401);
@@ -28,13 +29,13 @@ export async function POST(req: Request) {
   // One login form for everyone: the user's ROLE decides where they go.
   if (u.role === "admin") { // the owner can never be locked out by a status change
     await setSession("admin", { uid: Number(u.id), ph: pwTag(String(u.password)) });
-    return NextResponse.json({ admin: true });
+    return NextResponse.json({ admin: true, welcome: welcomeName({ role: "admin", name: String(u.name || "") }) });
   }
   if (u.status === "blocked") return bad("Your account has been blocked. Please contact support.", 403);
   if (u.status === "inactive") return bad("Your account is inactive. Please contact support.", 403);
-  if (u.role === "subadmin") { // sub-admin: same login box, admin area
+  if (u.role === "subadmin") { // sub admin: same login box, admin area
     await setSession("admin", { uid: Number(u.id), ph: pwTag(String(u.password)) });
-    return NextResponse.json({ admin: true });
+    return NextResponse.json({ admin: true, welcome: welcomeName({ role: "subadmin", name: String(u.name || ""), vendor_name: String(u.vendor_name || ""), email: u.email ? String(u.email) : null }) });
   }
   await setSession("user", { uid: Number(u.id), identifier: String(u.email || u.phone) });
   return NextResponse.json({ user: { id: Number(u.id), identifier: String(u.email || u.phone) } });

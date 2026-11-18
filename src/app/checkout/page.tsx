@@ -40,7 +40,7 @@ function Checkout() {
 
   if (!checkoutItems.length) return <p className="card p-8 text-center text-gray-600">Nothing to checkout. <a className="text-brand-700 underline" href="/">Go shopping</a></p>;
   if (authReady && !user)
-    return <div className="card p-8 text-center"><p className="mb-3">Please log in to place your order.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Sign up</button></div>;
+    return <div className="card p-8 text-center"><p className="mb-3">Please log in to place your order.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Register</button></div>;
 
   async function place(e: React.FormEvent) {
     e.preventDefault();

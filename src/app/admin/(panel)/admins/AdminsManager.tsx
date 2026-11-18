@@ -6,21 +6,24 @@ import Pagination from "@/components/Pagination";
 import Req from "@/components/Req";
 import FieldError from "@/components/FieldError";
 import type { PageInfo } from "@/lib/paginate";
-import { type Errors, cleanStaff, firstError, validatePassword, validateStaff } from "@/lib/validate";
+import { type Errors, VENDOR_NAME_MAX, cleanStaff, firstError, validatePassword, validateStaff, validateVendorName } from "@/lib/validate";
 
-type A = { id: number; name: string; email: string | null; phone: string | null; role: "admin" | "subadmin"; status: "active" | "inactive" | "blocked"; created_at: string };
+type A = { id: number; name: string; vendor_name: string; email: string | null; phone: string | null; role: "admin" | "subadmin"; status: "active" | "inactive" | "blocked"; created_at: string };
 const badge = { active: "bg-green-100 text-green-800", inactive: "bg-gray-200 text-gray-700", blocked: "bg-red-100 text-red-700" };
 
 export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: PageInfo; meId: number }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: "", identifier: "", password: "" });
+  const [form, setForm] = useState({ name: "", vendor_name: "", identifier: "", password: "" });
   const [errs, setErrs] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [reset, setReset] = useState<A | null>(null);
   const [newPw, setNewPw] = useState("");
   const [resetErr, setResetErr] = useState<string | null>(null);
+  const [vendorFor, setVendorFor] = useState<A | null>(null);
+  const [vendorVal, setVendorVal] = useState("");
+  const [vendorErr, setVendorErr] = useState<string | null>(null);
   const login = (a: A) => a.email || a.phone || `#${a.id}`;
 
   const call = async (url: string, method: string, body?: unknown) => {
@@ -35,8 +38,8 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
     setBusy(true);
     const r = await call("/api/admin/admins", "POST", v);
     setBusy(false);
-    if (!r.ok) return toast.error(r.error || "Could not create sub-admin");
-    toast.success(`Sub-admin ${v.name} created`); setAdding(false); router.refresh();
+    if (!r.ok) return toast.error(r.error || "Could not create sub admin");
+    toast.success(`Sub admin ${v.name} created`); setAdding(false); router.refresh();
   }
   async function setStatus(a: A, status: A["status"], msg: string) {
     const r = await call(`/api/admin/admins/${a.id}`, "PATCH", { status });
@@ -44,9 +47,9 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
     router.refresh();
   }
   async function remove(a: A) {
-    if (!confirm(`Delete sub-admin ${a.name || login(a)}? They will lose access immediately.`)) return;
+    if (!confirm(`Delete sub admin ${a.name || login(a)}? They will lose access immediately.`)) return;
     const r = await call(`/api/admin/admins/${a.id}`, "DELETE");
-    r.ok ? toast.success("Sub-admin deleted") : toast.error(r.error || "Could not delete");
+    r.ok ? toast.success("Sub admin deleted") : toast.error(r.error || "Could not delete");
     router.refresh();
   }
   async function doReset(e: React.FormEvent) {
@@ -58,15 +61,25 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
     toast.success(`Password reset for ${reset.name || login(reset)}`); setReset(null); setNewPw("");
   }
 
+  async function saveVendor(e: React.FormEvent) {
+    e.preventDefault();
+    const v = vendorVal.trim().replace(/\s+/g, " "), m = validateVendorName(v); setVendorErr(m);
+    if (m || !vendorFor) return;
+    const r = await call(`/api/admin/admins/${vendorFor.id}`, "PATCH", { vendor_name: v });
+    if (!r.ok) return toast.error(r.error || "Could not save vendor name");
+    toast.success("Vendor name updated"); setVendorFor(null); router.refresh();
+  }
+
   const RoleBadge = ({ a }: { a: A }) => a.role === "admin"
-    ? <span className="whitespace-nowrap rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Admin</span>
-    : <span className="whitespace-nowrap rounded-full border border-brand-600 px-3 py-1 text-xs font-semibold text-brand-700">Sub-admin</span>;
+    ? <span className="whitespace-nowrap rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Super admin</span>
+    : <span className="whitespace-nowrap rounded-full border border-brand-600 px-3 py-1 text-xs font-semibold text-brand-700">Sub admin</span>;
   const Status = ({ a }: { a: A }) => <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold capitalize ${badge[a.status]}`}>{a.status}</span>;
-  const Actions = ({ a, cls }: { a: A; cls: string }) => a.role !== "subadmin" ? <span className="text-xs text-gray-400">Main account</span> : (
+  const Actions = ({ a, cls }: { a: A; cls: string }) => a.role !== "subadmin" ? <span className="text-xs text-gray-400">Super admin account</span> : (
     <>
       {a.status !== "active" && <button className={`btn-primary ${cls}`} onClick={() => setStatus(a, "active", `${login(a)} activated`)}>Activate</button>}
       {a.status === "active" && <button className={`btn border ${cls}`} onClick={() => setStatus(a, "inactive", `${login(a)} deactivated`)}>Deactivate</button>}
       {a.status !== "blocked" && <button className={`btn border border-amber-500 text-amber-700 hover:bg-amber-50 ${cls}`} onClick={() => setStatus(a, "blocked", `${login(a)} blocked`)}>Block</button>}
+      <button className={`btn-outline ${cls}`} onClick={() => { setVendorFor(a); setVendorVal(a.vendor_name || ""); setVendorErr(null); }}>Vendor name</button>
       <button className={`btn-outline ${cls}`} onClick={() => { setReset(a); setNewPw(""); setResetErr(null); }}>Reset password</button>
       <button className={`btn-danger ${cls}`} onClick={() => remove(a)}>Delete</button>
     </>
@@ -77,13 +90,18 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <button type="button" className="text-sm font-medium text-brand-700 hover:underline" onClick={() => setAdding(false)}>← Back to admins</button>
-          <h1 className="text-xl font-bold">Add sub-admin</h1>
+          <h1 className="text-xl font-bold">Add sub admin</h1>
         </div>
         <form onSubmit={create} noValidate className="card max-w-lg space-y-4 p-5">
-          <p className="rounded-lg bg-brand-50 p-3 text-sm text-brand-900">A sub-admin can manage everything in the admin area <b>except the Admins menu</b>. They log in from the normal login box with the details below.</p>
+          <p className="rounded-lg bg-brand-50 p-3 text-sm text-brand-900">A sub admin can manage everything in the admin area <b>except the Admins menu</b>. They log in from the normal login box with the details below.</p>
           <label className="block text-sm font-medium">Name<Req />
             <input className={`input mt-1 ${errs.name ? "!border-red-500" : ""}`} maxLength={50} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
             <FieldError msg={errs.name} />
+          </label>
+          <label className="block text-sm font-medium">Vendor name<Req />
+            <input className={`input mt-1 ${errs.vendor_name ? "!border-red-500" : ""}`} maxLength={VENDOR_NAME_MAX} value={form.vendor_name} onChange={(e) => setForm({ ...form, vendor_name: e.target.value })} placeholder="e.g. Meera Traders" />
+            <span className="mt-1 block text-xs font-normal text-gray-500">The shop name customers see on this sub admin's products ("Sold by …") and in their orders. It is also used to welcome them.</span>
+            <FieldError msg={errs.vendor_name} />
           </label>
           <label className="block text-sm font-medium">Login — email or 10-digit phone<Req />
             <input className={`input mt-1 ${errs.identifier ? "!border-red-500" : ""}`} maxLength={100} autoComplete="off" value={form.identifier} onChange={(e) => setForm({ ...form, identifier: e.target.value })} placeholder="staff@example.com" />
@@ -98,7 +116,7 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
             <FieldError msg={errs.password} />
           </label>
           <div className="flex gap-2">
-            <button className="btn-primary" disabled={busy}>{busy ? "Creating…" : "Create sub-admin"}</button>
+            <button className="btn-primary" disabled={busy}>{busy ? "Creating…" : "Create sub admin"}</button>
             <button type="button" className="btn border" onClick={() => setAdding(false)}>Cancel</button>
           </div>
         </form>
@@ -108,8 +126,8 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <div><h1 className="text-xl font-bold">Admins ({pi.total})</h1><p className="text-sm text-gray-500">The main admin and sub-admins who help run the shop.</p></div>
-        <button className="btn-primary shrink-0" onClick={() => { setForm({ name: "", identifier: "", password: "" }); setErrs({}); setShowPw(false); setAdding(true); }}>+ Add sub-admin</button>
+        <div><h1 className="text-xl font-bold">Admins ({pi.total})</h1><p className="text-sm text-gray-500">The super admin and sub admins who help run the shop.</p></div>
+        <button className="btn-primary shrink-0" onClick={() => { setForm({ name: "", vendor_name: "", identifier: "", password: "" }); setErrs({}); setShowPw(false); setAdding(true); }}>+ Add sub admin</button>
       </div>
 
       {/* Phones: cards */}
@@ -119,7 +137,8 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-600 text-lg font-bold text-white">{(a.name || login(a))[0].toUpperCase()}</div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{a.name || "—"}{a.id === meId && <span className="ml-2 text-xs font-normal text-gray-400">(you)</span>}</p>
+                <p className="truncate font-semibold">{a.role === "subadmin" ? (a.vendor_name || a.name || "—") : (a.name && a.name !== "Admin" ? a.name : "Super admin")}{a.id === meId && <span className="ml-2 text-xs font-normal text-gray-400">(you)</span>}</p>
+                {a.role === "subadmin" && a.vendor_name && a.name && <p className="truncate text-xs text-gray-500">Contact: {a.name}</p>}
                 <p className="truncate text-sm text-gray-600">{a.email || "No email"}</p>
                 <p className="text-sm text-gray-600">{a.phone || "No phone"}</p>
               </div>
@@ -134,11 +153,12 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
       {/* Tablet / desktop: table */}
       <div className="card hidden overflow-x-auto md:block">
         <table className="w-full text-left text-sm">
-          <thead className="bg-brand-50"><tr><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Phone</th><th className="p-3">Role</th><th className="p-3">Status</th><th className="p-3">Added</th><th className="p-3 text-right">Actions</th></tr></thead>
+          <thead className="bg-brand-50"><tr><th className="p-3">Name</th><th className="p-3">Vendor name</th><th className="p-3">Email</th><th className="p-3">Phone</th><th className="p-3">Role</th><th className="p-3">Status</th><th className="p-3">Added</th><th className="p-3 text-right">Actions</th></tr></thead>
           <tbody>
             {admins.map((a) => (
               <tr key={a.id} className="border-t">
-                <td className="p-3 font-medium">{a.name || "—"}{a.id === meId && <span className="ml-2 text-xs font-normal text-gray-400">(you)</span>}</td>
+                <td className="p-3 font-medium">{a.name && a.name !== "Admin" ? a.name : a.role === "admin" ? "Super admin" : "—"}{a.id === meId && <span className="ml-2 text-xs font-normal text-gray-400">(you)</span>}</td>
+                <td className="p-3 text-gray-700">{a.role === "subadmin" ? a.vendor_name || <span className="text-gray-400">not set</span> : "—"}</td>
                 <td className="p-3 text-gray-700">{a.email || "—"}</td>
                 <td className="p-3 text-gray-700">{a.phone || "—"}</td>
                 <td className="p-3"><RoleBadge a={a} /></td>
@@ -151,6 +171,18 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
         </table>
       </div>
       <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/admins${p > 1 ? `?page=${p}` : ""}`} />
+
+      {vendorFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <form onSubmit={saveVendor} noValidate className="card w-full max-w-sm space-y-3 p-5">
+            <div className="flex items-start justify-between"><h2 className="text-lg font-bold text-brand-700">Vendor name</h2><button type="button" className="text-2xl leading-none text-gray-400" onClick={() => setVendorFor(null)} aria-label="Close">×</button></div>
+            <p className="text-sm text-gray-600">Shown to customers as “Sold by …” for <b>{vendorFor.name || login(vendorFor)}</b>’s products.</p>
+            <input className={`input ${vendorErr ? "!border-red-500" : ""}`} maxLength={VENDOR_NAME_MAX} value={vendorVal} onChange={(e) => setVendorVal(e.target.value)} autoFocus placeholder="e.g. Meera Traders" />
+            <FieldError msg={vendorErr ?? undefined} />
+            <button className="btn-primary w-full">Save vendor name</button>
+          </form>
+        </div>
+      )}
 
       {reset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

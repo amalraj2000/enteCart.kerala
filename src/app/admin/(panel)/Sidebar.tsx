@@ -11,7 +11,7 @@ const LINKS: [string, string, string, boolean?][] = [
   ["/admin/banners", "Banners", "🖼️"],
   ["/admin/users", "Users", "👥"],
   ["/admin/admins", "Admins", "🛡️", true], // owner-only
-  ["/admin/settings", "Settings", "⚙️"],
+  ["/admin/settings", "Settings", "⚙️", true], // owner-only
 ];
 
 export default function Sidebar({ role }: { role: "admin" | "subadmin" }) {
@@ -20,7 +20,7 @@ export default function Sidebar({ role }: { role: "admin" | "subadmin" }) {
   return (
     <aside className="md:w-56 md:shrink-0">
       <div className="card grid grid-cols-3 gap-1 p-2 md:sticky md:top-24 md:flex md:flex-col">
-        <p className="hidden px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-wider text-gray-400 md:block">{role === "admin" ? "Admin panel" : "Sub-admin panel"}</p>
+        <p className="hidden px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-wider text-gray-400 md:block">{role === "admin" ? "Super admin panel" : "Sub admin panel"}</p>
         {LINKS.filter(([, , , ownerOnly]) => !ownerOnly || role === "admin").map(([href, label, icon]) => {
           const active = href === "/admin" ? path === href : path.startsWith(href);
           return (

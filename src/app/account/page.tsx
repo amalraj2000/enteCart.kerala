@@ -34,7 +34,7 @@ export default function AccountPage() {
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!authReady) return null;
-  if (!user) return <div className="card p-8 text-center"><p className="mb-3">Log in to manage your profile.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Sign up</button></div>;
+  if (!user) return <div className="card p-8 text-center"><p className="mb-3">Log in to manage your profile.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Register</button></div>;
 
   async function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];

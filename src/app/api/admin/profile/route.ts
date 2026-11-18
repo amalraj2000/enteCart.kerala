@@ -10,8 +10,8 @@ export async function GET() {
   const a = await getAdmin();
   if (!a) return bad("Unauthorized", 401);
   const c = await db();
-  const row = (await c.execute({ sql: "SELECT name, avatar FROM users WHERE id = ?", args: [a.id] })).rows[0];
-  return NextResponse.json({ role: a.role, username: a.identifier, name: String(row?.name || ""), avatar: String(row?.avatar || "") });
+  const row = (await c.execute({ sql: "SELECT name, vendor_name, avatar FROM users WHERE id = ?", args: [a.id] })).rows[0];
+  return NextResponse.json({ role: a.role, vendor_name: String(row?.vendor_name || ""), username: a.identifier, name: String(row?.name || ""), avatar: String(row?.avatar || "") });
 }
 
 export async function PUT(req: Request) {

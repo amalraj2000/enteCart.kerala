@@ -14,7 +14,7 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
   const c = await db();
   const u = (await c.execute({ sql: "SELECT id, name, email, phone, status, role, avatar, address_id, created_at FROM users WHERE id = ?", args: [Number(id) || 0] })).rows[0] as any;
   if (!u || u.role !== "user") notFound(); // staff accounts live under Admins
-  const orders = await withImages((await c.execute({ sql: "SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC", args: [u.id] })).rows);
+  const orders = await withImages((await c.execute({ sql: "SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC", args: [u.id] })).rows, { admins: true });
 
   // Addresses: the saved one (addresses table) first, then any other address used on an order.
   const saved = (await c.execute({ sql: "SELECT * FROM addresses WHERE user_id = ? ORDER BY (id = ?) DESC, id", args: [u.id, u.address_id ?? 0] })).rows as any[];
@@ -38,7 +38,7 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="break-all text-xl font-bold">{title}</h1>
-            {u.role === "admin" ? <span className="rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Admin</span> : <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${badge[u.status]}`}>{u.status}</span>}
+            {u.role === "admin" ? <span className="rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Super admin</span> : <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${badge[u.status]}`}>{u.status}</span>}
           </div>
           <dl className="mt-3 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2">
             <div className="flex gap-2"><dt className="text-gray-500">User ID</dt><dd className="font-medium">#{u.id}</dd></div>

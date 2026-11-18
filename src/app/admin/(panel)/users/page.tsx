@@ -1,13 +1,15 @@
 import { db } from "@/lib/db";
+import { getAdmin } from "@/lib/session";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import UsersTable from "./UsersTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function Users({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const me = (await getAdmin())!;
   const c = await db();
   const total = Number((await c.execute("SELECT COUNT(*) AS n FROM users WHERE role = 'user'")).rows[0].n);
   const pi = pageInfo(total, parsePage((await searchParams).page));
   const rows = (await c.execute({ sql: `SELECT id, name, email, phone, status, role, created_at FROM users WHERE role = 'user' ORDER BY id DESC LIMIT ${PAGE_SIZE} OFFSET ?`, args: [pi.offset] })).rows;
-  return <UsersTable users={JSON.parse(JSON.stringify(rows))} pi={pi} />;
+  return <UsersTable users={JSON.parse(JSON.stringify(rows))} pi={pi} staffRole={me.role} />;
 }

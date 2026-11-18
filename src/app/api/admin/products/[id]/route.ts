@@ -1,16 +1,29 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { isAdmin } from "@/lib/session";
+import { getAdmin } from "@/lib/session";
+import { canEditRow } from "@/lib/permissions";
 import { bad, readJson } from "@/lib/http";
 import { categoryExists, missingUploads } from "@/lib/productImages";
 import { cleanProduct, firstError, parseId, validateProduct } from "@/lib/validate";
 
 type Ctx = { params: Promise<{ id: string }> };
 
+/** 404 if missing, 403 if a sub admin tries to touch a product somebody else added. */
+async function guard(me: { id: number; role: "admin" | "subadmin" }, id: number) {
+  const c = await db();
+  const row = (await c.execute({ sql: "SELECT created_by FROM products WHERE id = ?", args: [id] })).rows[0];
+  if (!row) return bad("Product not found", 404);
+  if (!canEditRow(me, row.created_by)) return bad("You can only change products you added", 403);
+  return null;
+}
+
 export async function PUT(req: Request, { params }: Ctx) {
-  if (!(await isAdmin())) return bad("Unauthorized", 401);
+  const me = await getAdmin();
+  if (!me) return bad("Unauthorized", 401);
   const id = parseId((await params).id);
   if (!id) return bad("Invalid product id");
+  const denied = await guard(me, id);
+  if (denied) return denied;
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
   const p = cleanProduct(b);
@@ -29,9 +42,12 @@ export async function PUT(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_: Request, { params }: Ctx) {
-  if (!(await isAdmin())) return bad("Unauthorized", 401);
+  const me = await getAdmin();
+  if (!me) return bad("Unauthorized", 401);
   const id = parseId((await params).id);
   if (!id) return bad("Invalid product id");
+  const denied = await guard(me, id);
+  if (denied) return denied;
   const c = await db();
   await c.execute({ sql: "DELETE FROM wishlist WHERE product_id = ?", args: [id] });
   await c.execute({ sql: "UPDATE order_items SET product_id = NULL WHERE product_id = ?", args: [id] }); // past orders keep title/price/photo

@@ -1,5 +1,7 @@
 export type Category = { id: number; name: string; count?: number };
 export type Product = {
+  created_by?: number | null;
+  added_by_name?: string | null; // admin who added it (joined for the admin product list)
   category_id?: number | null;
   category_name?: string | null;
   images?: string; // JSON array of URLs; image_url is always the first one

@@ -8,7 +8,8 @@ import type { PageInfo } from "@/lib/paginate";
 type U = { id: number; name: string; email: string | null; phone: string | null; status: "active" | "inactive" | "blocked"; role: "user" | "admin"; created_at: string };
 const badge = { active: "bg-green-100 text-green-800", inactive: "bg-gray-200 text-gray-700", blocked: "bg-red-100 text-red-700" };
 
-export default function UsersTable({ users, pi }: { users: U[]; pi: PageInfo }) {
+export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: PageInfo; staffRole: "admin" | "subadmin" }) {
+  const owner = staffRole === "admin"; // sub admins: view users and make them inactive — nothing else
   const router = useRouter();
   const label = (u: U) => u.email || u.phone || `#${u.id}`;
 
@@ -28,17 +29,17 @@ export default function UsersTable({ users, pi }: { users: U[]; pi: PageInfo }) 
 
   const Status = ({ u }: { u: U }) =>
     u.role === "admin"
-      ? <span className="whitespace-nowrap rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Admin</span>
+      ? <span className="whitespace-nowrap rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Super admin</span>
       : <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold capitalize ${badge[u.status]}`}>{u.status}</span>;
 
   // One set of actions, laid out by the caller (table cell on desktop, button grid on phones).
   const Actions = ({ u, cls }: { u: U; cls: string }) => (
     <>
       <Link href={`/admin/users/${u.id}`} className={`btn-outline ${cls}`}>View</Link>
-      {u.role === "user" && u.status !== "active" && <button className={`btn-primary ${cls}`} onClick={() => setStatus(u, "active", `${label(u)} activated`)}>Activate</button>}
+      {owner && u.role === "user" && u.status !== "active" && <button className={`btn-primary ${cls}`} onClick={() => setStatus(u, "active", `${label(u)} activated`)}>Activate</button>}
       {u.role === "user" && u.status === "active" && <button className={`btn border ${cls}`} onClick={() => setStatus(u, "inactive", `${label(u)} marked inactive`)}>Make inactive</button>}
-      {u.role === "user" && u.status !== "blocked" && <button className={`btn border border-amber-500 text-amber-700 hover:bg-amber-50 ${cls}`} onClick={() => setStatus(u, "blocked", `${label(u)} blocked`)}>Block</button>}
-      {u.role === "user" && <button className={`btn-danger ${cls}`} onClick={() => remove(u)}>Delete</button>}
+      {owner && u.role === "user" && u.status !== "blocked" && <button className={`btn border border-amber-500 text-amber-700 hover:bg-amber-50 ${cls}`} onClick={() => setStatus(u, "blocked", `${label(u)} blocked`)}>Block</button>}
+      {owner && u.role === "user" && <button className={`btn-danger ${cls}`} onClick={() => remove(u)}>Delete</button>}
     </>
   );
 

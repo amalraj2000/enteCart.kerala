@@ -13,7 +13,7 @@ import { inr, productImages, type Category, type Product } from "@/lib/types";
 
 const empty = { title: "", description: "", price: "", stock: "", sizes: "", category_id: "", images: [] as string[] };
 
-export default function ProductManager({ products, categories, pi }: { products: Product[]; categories: Category[]; pi: PageInfo }) {
+export default function ProductManager({ products, categories, pi, staff, meId, by }: { products: (Product & { editable?: boolean })[]; categories: Category[]; pi: PageInfo; staff: { id: number; name: string }[]; meId: number; by: string }) {
   const router = useRouter();
   const [form, setForm] = useState<Record<string, any>>(empty);
   const [editing, setEditing] = useState<number | null>(null);
@@ -80,6 +80,7 @@ export default function ProductManager({ products, categories, pi }: { products:
           <button type="button" className="text-sm font-medium text-brand-700 hover:underline" onClick={() => setOpen(false)} disabled={uploading > 0}>← Back to products</button>
           <h1 className="text-xl font-bold">{editing ? "Edit product" : "Add product"}</h1>
         </div>
+        {editing && <p className="text-sm text-gray-500">Added by <b className="text-gray-700">{products.find((x) => x.id === editing)?.added_by_name || "—"}</b></p>}
         <form onSubmit={save} noValidate className="card grid gap-3 p-5 sm:grid-cols-2">
           {([
             ["title", "Title", "sm:col-span-2", { maxLength: PRODUCT_TITLE_MAX }],
@@ -143,28 +144,38 @@ export default function ProductManager({ products, categories, pi }: { products:
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold">Products ({pi.total})</h1>
-        <button className="btn-primary" onClick={add}>+ Add product</button>
+        <button className="btn-primary shrink-0" onClick={add}>+ Add product</button>
+      </div>
+      <div className="mb-4 flex items-center gap-2 text-sm">
+        <label htmlFor="by" className="text-gray-500">Added by</label>
+        <select id="by" className="input !w-auto !py-1.5" value={by} onChange={(e) => router.push(e.target.value === "all" ? "/admin/products" : `/admin/products?by=${e.target.value}`)}>
+          <option value="all">All admins</option>
+          {staff.map((s) => <option key={s.id} value={s.id}>{s.name}{s.id === meId ? " (me)" : ""}</option>)}
+        </select>
       </div>
       <div className="card divide-y">
         {products.map((p) => (
-          <div key={p.id} className="flex items-center gap-3 p-3">
+          <div key={p.id} className="flex flex-wrap items-center gap-3 p-3">
             <div className="relative shrink-0">
               <Img src={p.image_url} alt={p.title} className="h-14 w-14 rounded-lg object-cover" />
               {productImages(p).length > 1 && <span className="absolute -bottom-1 -right-1 rounded-full bg-brand-700 px-1.5 text-[10px] font-semibold text-white">{productImages(p).length}</span>}
             </div>
-            <div className="flex-1">
+            <div className="min-w-0 flex-1 basis-40">
               <p className="font-medium">{p.title}{p.category_name && <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">{p.category_name}</span>}</p>
               <p className="text-xs text-gray-500">{inr(p.price)} · Stock {p.stock}{p.sizes && ` · ${p.sizes}`}</p>
+              <p className="text-xs text-gray-400">Added by <span className="font-medium text-gray-600">{p.added_by_name || "—"}</span></p>
             </div>
-            <button className="btn-outline !py-1" onClick={() => edit(p)}>Edit</button>
-            <button className="btn-danger !py-1" onClick={() => del(p)}>Delete</button>
+            {p.editable === false
+              ? <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Added by another admin">View only</span>
+              : <div className="flex gap-2"><button className="btn-outline !py-1" onClick={() => edit(p)}>Edit</button>
+            <button className="btn-danger !py-1" onClick={() => del(p)}>Delete</button></div>}
           </div>
         ))}
         {!products.length && <p className="p-6 text-center text-gray-500">No products.</p>}
       </div>
-      <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/products${p > 1 ? `?page=${p}` : ""}`} />
+      <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/products?${new URLSearchParams({ ...(by !== "all" ? { by } : {}), ...(p > 1 ? { page: String(p) } : {}) })}`} />
     </div>
   );
 }

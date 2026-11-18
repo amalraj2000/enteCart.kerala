@@ -63,15 +63,15 @@ export async function getAdmin() {
   const s = await getSession("admin");
   if (!s?.uid) return null;
   const c = await db();
-  const r = await c.execute({ sql: "SELECT id, email, phone, role, password FROM users WHERE id = ? AND role IN ('admin', 'subadmin') AND status = 'active'", args: [Number(s.uid)] });
+  const r = await c.execute({ sql: "SELECT id, email, phone, role, name, vendor_name, password FROM users WHERE id = ? AND role IN ('admin', 'subadmin') AND status = 'active'", args: [Number(s.uid)] });
   const u = r.rows[0];
   // The session is tied to the current password: resetting it (by the owner, or by the person themself) ends every older session.
   if (u && s.ph !== pwTag(String(u.password))) return null;
-  return u ? { id: Number(u.id), identifier: String(u.email || u.phone || ""), role: String(u.role) as StaffRole } : null;
+  return u ? { id: Number(u.id), identifier: String(u.email || u.phone || ""), role: String(u.role) as StaffRole, name: String(u.name || ""), vendor_name: String(u.vendor_name || "") } : null;
 }
-/** Any staff member (admin or sub-admin) — guards the whole admin area. */
+/** Any staff member (admin or sub admin) — guards the whole admin area. */
 export const isAdmin = async () => !!(await getAdmin());
-/** Only the owner admin — guards the Admins menu and its API (sub-admins are refused). */
+/** Only the owner admin — guards the Admins menu and its API (sub admins are refused). */
 export async function getSuperAdmin() {
   const a = await getAdmin();
   return a && a.role === "admin" ? a : null;

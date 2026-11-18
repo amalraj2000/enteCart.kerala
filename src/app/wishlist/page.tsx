@@ -12,7 +12,7 @@ export default function WishlistPage() {
   }, [user]);
 
   if (!authReady) return null;
-  if (!user) return <div className="card p-8 text-center"><p className="mb-3">Log in to see your wishlist.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Sign up</button></div>;
+  if (!user) return <div className="card p-8 text-center"><p className="mb-3">Log in to see your wishlist.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Register</button></div>;
   if (!products) return <p>Loading…</p>;
   const shown = products.filter((p) => wishlist.includes(Number(p.id))); // removing a heart removes the card instantly
   return (

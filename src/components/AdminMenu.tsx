@@ -7,7 +7,7 @@ import { toast } from "./Toaster";
 export default function AdminMenu() {
   const router = useRouter();
   const [menu, setMenu] = useState(false);
-  const [me, setMe] = useState({ username: "admin", name: "", avatar: "", role: "admin" });
+  const [me, setMe] = useState({ username: "admin", name: "", vendor_name: "", avatar: "", role: "admin" });
 
   const load = useCallback(() => {
     fetch("/api/admin/profile").then((r) => r.json()).then((d) => d.username && setMe(d));
@@ -18,7 +18,7 @@ export default function AdminMenu() {
     return () => window.removeEventListener("admin-profile-updated", load);
   }, [load]);
 
-  const name = me.name?.split(" ")[0] || me.username;
+  const name = me.role === "subadmin" ? me.vendor_name || me.name?.split(" ")[0] || me.username : me.name && me.name !== "Admin" ? me.name.split(" ")[0] : "Super admin";
   return (
     <div className="relative">
       <button onClick={() => setMenu(!menu)} className="flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 py-1 pl-1 pr-3 text-sm font-semibold text-brand-700 hover:bg-brand-100" aria-label="Admin account">
@@ -29,7 +29,7 @@ export default function AdminMenu() {
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white">{name[0]?.toUpperCase()}</span>
         )}
         <span className="hidden sm:inline">{name}</span>
-        {me.role === "subadmin" && <span className="hidden rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-700 sm:inline">Sub-admin</span>}
+        {me.role === "subadmin" && <span className="hidden rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-700 sm:inline">Sub admin</span>}
       </button>
       {menu && (
         <div className="card absolute right-0 mt-2 w-48 p-1 text-sm" onClick={() => setMenu(false)}>

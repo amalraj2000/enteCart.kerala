@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { isAdmin } from "@/lib/session";
+import { getSuperAdmin } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
 import { cleanSettings, firstError, validateSettings } from "@/lib/validate";
 
 export async function PUT(req: Request) {
-  if (!(await isAdmin())) return bad("Unauthorized", 401);
+  if (!(await getSuperAdmin())) return bad("Only the super admin can change shop settings", 403);
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
   const v = cleanSettings(b);

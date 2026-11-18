@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { isAdmin } from "@/lib/session";
+import { getAdmin } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
 import { parseId, validateStatus } from "@/lib/validate";
 
@@ -16,7 +16,8 @@ async function guard(id: number) {
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  if (!(await isAdmin())) return bad("Unauthorized", 401);
+  const me = await getAdmin();
+  if (!me) return bad("Unauthorized", 401);
   const id = parseId((await params).id);
   if (!id) return bad("Invalid user id");
   const b = await readJson(req);
@@ -24,12 +25,21 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const g = await guard(id);
   if (g) return g;
   const c = await db();
+  if (me.role === "subadmin") {
+    // A sub admin may only deactivate an active customer: no activating, blocking or un-blocking.
+    if (b.status !== "inactive") return bad("Sub admins can only make users inactive", 403);
+    const r = await c.execute({ sql: "UPDATE users SET status = 'inactive' WHERE id = ? AND role = 'user' AND status = 'active'", args: [id] });
+    if (r.rowsAffected !== 1) return bad("Only active users can be made inactive", 409);
+    return NextResponse.json({ ok: true });
+  }
   await c.execute({ sql: "UPDATE users SET status = ? WHERE id = ? AND role = 'user'", args: [b.status as string, id] });
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(_: Request, { params }: Ctx) {
-  if (!(await isAdmin())) return bad("Unauthorized", 401);
+  const me = await getAdmin();
+  if (!me) return bad("Unauthorized", 401);
+  if (me.role !== "admin") return bad("Only the super admin can delete users", 403);
   const id = parseId((await params).id);
   if (!id) return bad("Invalid user id");
   const g = await guard(id);

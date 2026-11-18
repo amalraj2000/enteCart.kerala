@@ -7,10 +7,10 @@ import FieldError from "@/components/FieldError";
 import { toPhoto } from "@/lib/image";
 import { type Errors, cleanBanner, firstError, validateBanner } from "@/lib/validate";
 
-export type Banner = { id: number; title: string; subtitle: string; button_text: string; link: string; image: string; position: number; active: number };
+export type Banner = { id: number; title: string; subtitle: string; button_text: string; link: string; image: string; position: number; active: number; editable?: boolean; added_by_name?: string | null };
 const empty = { title: "", subtitle: "", button_text: "", link: "", image: "", active: true };
 
-export default function BannerManager({ banners }: { banners: Banner[] }) {
+export default function BannerManager({ banners, isOwner = true }: { banners: Banner[]; isOwner?: boolean }) {
   const router = useRouter();
   const [form, setForm] = useState<Record<string, any>>(empty);
   const [editing, setEditing] = useState<Banner | null>(null);
@@ -144,15 +144,24 @@ export default function BannerManager({ banners }: { banners: Banner[] }) {
             <div className="min-w-0 flex-1 basis-40">
               <p className="truncate font-medium">{b.title}</p>
               <p className="truncate text-xs text-gray-500">{b.subtitle || "—"}{b.button_text && ` · Button: ${b.button_text}`}</p>
+              <p className="text-xs text-gray-400">Added by <span className="font-medium text-gray-600">{b.added_by_name || "—"}</span></p>
             </div>
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${b.active ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-600"}`}>{b.active ? "Live" : "Hidden"}</span>
-            <div className="flex items-center gap-1">
-              <button className="btn border !px-2 !py-1" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">↑</button>
-              <button className="btn border !px-2 !py-1" disabled={i === banners.length - 1} onClick={() => move(i, 1)} aria-label="Move down">↓</button>
-              <button className="btn border !py-1" onClick={() => toggle(b)}>{b.active ? "Hide" : "Show"}</button>
-              <button className="btn-outline !py-1" onClick={() => { setForm({ ...b, active: !!b.active }); setEditing(b); setErrs({}); setOpen(true); }}>Edit</button>
-              <button className="btn-danger !py-1" onClick={() => del(b)}>Delete</button>
-            </div>
+            {isOwner && (
+              <div className="flex items-center gap-1">
+                <button className="btn border !px-2 !py-1" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">↑</button>
+                <button className="btn border !px-2 !py-1" disabled={i === banners.length - 1} onClick={() => move(i, 1)} aria-label="Move down">↓</button>
+              </div>
+            )}
+            {b.editable === false
+              ? <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Created by another admin">View only</span>
+              : (
+                <div className="flex items-center gap-1">
+                  <button className="btn border !py-1" onClick={() => toggle(b)}>{b.active ? "Hide" : "Show"}</button>
+                  <button className="btn-outline !py-1" onClick={() => { setForm({ ...b, active: !!b.active }); setEditing(b); setErrs({}); setOpen(true); }}>Edit</button>
+                  <button className="btn-danger !py-1" onClick={() => del(b)}>Delete</button>
+                </div>
+              )}
           </div>
         ))}
         {!banners.length && <p className="p-6 text-center text-gray-500">No banners yet — the home page shows a default green banner. Add one to start a slider.</p>}

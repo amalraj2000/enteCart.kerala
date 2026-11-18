@@ -48,6 +48,8 @@ export default function OrderDetail({ o, admin, actions }: { o: FullOrder; admin
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{i.title}</p>
                 {i.size && <span className="mt-1 inline-block rounded bg-brand-50 px-2 py-0.5 text-xs text-brand-700">Size: {i.size}</span>}
+                {!admin && i.vendor && <span className="ml-1 mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Sold by {i.vendor}</span>}
+                {admin && i.added_by && <span className="ml-1 mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600" title="The admin who added this product">Added by {i.added_by}</span>}
                 <p className="mt-1 text-sm text-gray-500">{inr(i.price)} × {i.qty}</p>
               </div>
               <p className="font-semibold">{inr(i.price * i.qty)}</p>

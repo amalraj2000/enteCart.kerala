@@ -35,6 +35,7 @@ const USERS_DDL = (name = "users") => `CREATE TABLE ${name} (
     role TEXT NOT NULL DEFAULT 'user',
     status TEXT NOT NULL DEFAULT 'active',
     avatar TEXT NOT NULL DEFAULT '',
+    vendor_name TEXT NOT NULL DEFAULT '', -- sub admins: the brand name customers see ("Sold by …")
     address_id INTEGER, -- → addresses.id (the saved address). Kept in step by the app: addresses is created after users, so no DB-level FK here.
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`;
@@ -97,13 +98,15 @@ const BASE_SCHEMA = [
     image_url TEXT NOT NULL DEFAULT '',
     images TEXT NOT NULL DEFAULT '',
     category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    created_by INTEGER, -- → users.id of the admin / sub admin who added it. No DB-level FK on purpose: if that admin is later deleted the id stays, so the product shows "Former admin" instead of being re-assigned.
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   IF_NOT_EXISTS(ORDERS_DDL()),
   IF_NOT_EXISTS(ORDER_ITEMS_DDL),
   `CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE COLLATE NOCASE
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    created_by INTEGER -- → users.id of who created it (no FK: stays after that admin is deleted)
   )`,
   `CREATE TABLE IF NOT EXISTS product_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,6 +127,7 @@ const BASE_SCHEMA = [
     image TEXT NOT NULL DEFAULT '',
     position INTEGER NOT NULL DEFAULT 0,
     active INTEGER NOT NULL DEFAULT 1,
+    created_by INTEGER, -- → users.id of who created it (no FK: stays after that admin is deleted)
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE TABLE IF NOT EXISTS wishlist (
@@ -254,6 +258,10 @@ export function db(): Promise<Client> {
       // Columns added to products after the first release (databases created before then).
       await c.execute("ALTER TABLE products ADD COLUMN category_id INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE products ADD COLUMN images TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists
+      await c.execute("ALTER TABLE products ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
+      await c.execute("ALTER TABLE users ADD COLUMN vendor_name TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists
+      await c.execute("ALTER TABLE categories ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
+      await c.execute("ALTER TABLE banners ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE products ADD COLUMN created_at TEXT").catch(() => {}); // already exists (SQLite can't add a non-constant default)
       await c.execute("UPDATE products SET created_at = datetime('now') WHERE created_at IS NULL"); // existing products count as "added today" once
 
@@ -296,6 +304,15 @@ export function db(): Promise<Client> {
           throw e;
         }
       }
+      // ONE-TIME: products that pre-date "added by" (or were seeded) belong to the super admin.
+      // Guarded by a claim row so it never re-runs — later NULLs must not be re-assigned.
+      const owned = await c.execute("INSERT OR IGNORE INTO meta (key, value) VALUES ('products_created_by', 'done')");
+      if (owned.rowsAffected === 1)
+        await c.batch(["products", "categories", "banners"].map((t) => ({ sql: `UPDATE ${t} SET created_by = (SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1) WHERE created_by IS NULL`, args: [] })), "write");
+      // Databases that already ran the step above for products only: do categories + banners once too.
+      const owned2 = await c.execute("INSERT OR IGNORE INTO meta (key, value) VALUES ('owners_cat_banner', 'done')");
+      if (owned2.rowsAffected === 1)
+        await c.batch(["categories", "banners"].map((t) => ({ sql: `UPDATE ${t} SET created_by = (SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1) WHERE created_by IS NULL`, args: [] })), "write");
     })().catch((e) => {
       ready = null;
       throw e;
