@@ -53,12 +53,26 @@ export async function getUser() {
   if (!u || u.status !== "active" || u.role !== "user") return null;
   return { id: Number(s.uid), identifier: String(u.email || u.phone || "") };
 }
-/** The logged-in admin: a users row with role = 'admin', re-checked in the DB on every request. */
+/** Short fingerprint of a password hash, stored inside the admin session token. */
+export const pwTag = (hash: string) => hash.slice(-12);
+
+export type StaffRole = "admin" | "subadmin";
+
+/** The logged-in staff member (owner "admin" or "subadmin"): a users row, re-checked in the DB on every request. */
 export async function getAdmin() {
   const s = await getSession("admin");
   if (!s?.uid) return null;
   const c = await db();
-  const r = await c.execute({ sql: "SELECT id, email, phone FROM users WHERE id = ? AND role = 'admin' AND status = 'active'", args: [Number(s.uid)] });
-  return r.rows[0] ? { id: Number(r.rows[0].id), identifier: String(r.rows[0].email || r.rows[0].phone || "") } : null;
+  const r = await c.execute({ sql: "SELECT id, email, phone, role, password FROM users WHERE id = ? AND role IN ('admin', 'subadmin') AND status = 'active'", args: [Number(s.uid)] });
+  const u = r.rows[0];
+  // The session is tied to the current password: resetting it (by the owner, or by the person themself) ends every older session.
+  if (u && s.ph !== pwTag(String(u.password))) return null;
+  return u ? { id: Number(u.id), identifier: String(u.email || u.phone || ""), role: String(u.role) as StaffRole } : null;
 }
+/** Any staff member (admin or sub-admin) — guards the whole admin area. */
 export const isAdmin = async () => !!(await getAdmin());
+/** Only the owner admin — guards the Admins menu and its API (sub-admins are refused). */
+export async function getSuperAdmin() {
+  const a = await getAdmin();
+  return a && a.role === "admin" ? a : null;
+}

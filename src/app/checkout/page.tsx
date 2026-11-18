@@ -83,7 +83,10 @@ function Checkout() {
         </div>
         <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm">💵 <b>Cash on Delivery</b> — pay when your order arrives.</div>
         <p className="flex items-center gap-2 text-xs text-gray-600"><InfoTip title="Cancellation policy" lines={CANCEL_POLICY} /> Cancel while “Placed”. Once “Confirmed”, no cancellation or returns.</p>
-        <button className="btn-primary w-full" disabled={busy}>{busy ? "Placing order…" : `Place Order (COD) · ${inr(total)}`}</button>
+        <div className="h-16 md:hidden" aria-hidden />
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur md:static md:z-auto md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+          <button className="btn-primary w-full" disabled={busy}>{busy ? "Placing order…" : `Place Order (COD) · ${inr(total)}`}</button>
+        </div>
       </form>
       <div className="card h-fit space-y-2 p-5">
         <h2 className="font-bold">Items</h2>

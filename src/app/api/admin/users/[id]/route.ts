@@ -11,7 +11,7 @@ async function guard(id: number) {
   const c = await db();
   const row = (await c.execute({ sql: "SELECT role FROM users WHERE id = ?", args: [id] })).rows[0];
   if (!row) return bad("User not found", 404);
-  if (row.role === "admin") return bad("The admin account can't be changed here", 403);
+  if (row.role !== "user") return bad("Admin accounts are managed under Admins", 403);
   return null;
 }
 

@@ -4,6 +4,6 @@ export const canCancel = (status: string) => status === CANCELLABLE_STATUS;
 export const CANCEL_POLICY_SHORT = "You can cancel this order only while its status is “Placed”.";
 export const CANCEL_POLICY = [
   "You can cancel your order from My Orders while its status is “Placed”.",
-  "Once we confirm it (status “Confirmed”), the Cancel button disappears and the order can no longer be cancelled.",
+  "Once we confirm it (status “Confirmed”), the order can no longer be cancelled.",
   "Returns are not available.",
 ];

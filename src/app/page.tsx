@@ -4,7 +4,6 @@ import type { Category } from "@/lib/types";
 import { parseId } from "@/lib/validate";
 import ProductCard, { type CardProduct } from "@/components/ProductCard";
 import BannerSlider, { type BannerData } from "@/components/BannerSlider";
-import TrustStrip from "@/components/TrustStrip";
 
 export const dynamic = "force-dynamic";
 
@@ -62,11 +61,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
         ? <BannerSlider banners={JSON.parse(JSON.stringify(banners))} />
         : (
           <section className="mb-6 rounded-2xl bg-gradient-to-r from-brand-700 to-brand-500 p-8 text-white">
-            <h1 className="text-3xl font-extrabold">Shop local. Pay on delivery.</h1>
+            <h1 className="text-3xl font-extrabold">Shop local. Shop Kerala.</h1>
             <p className="mt-2 text-brand-100">Handpicked products delivered to your doorstep in Kerala.</p>
           </section>
         ))}
-      {!filtered && <TrustStrip />}
 
       {cats.length > 0 && (
         <nav aria-label="Categories" className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1">

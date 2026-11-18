@@ -22,7 +22,7 @@ export default function BuyPanel({ product: p }: { product: Product }) {
           <p className="mb-2 text-sm font-semibold">Size</p>
           <div className="flex flex-wrap gap-2">
             {sizes.map((s) => (
-              <button key={s} onClick={() => setSize(s)} className={`rounded-lg border px-4 py-1.5 text-sm ${size === s ? "border-brand-600 bg-brand-50 font-semibold text-brand-700" : "border-gray-300"}`}>{s}</button>
+              <button key={s} onClick={() => setSize(s)} className={`min-h-10 rounded-lg border px-4 py-1.5 text-sm ${size === s ? "border-brand-600 bg-brand-50 font-semibold text-brand-700" : "border-gray-300"}`}>{s}</button>
             ))}
           </div>
         </div>
@@ -33,12 +33,13 @@ export default function BuyPanel({ product: p }: { product: Product }) {
       {!out && (
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold">Qty</span>
-          <button className="btn border" onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
+          <button className="btn border !min-w-11 !px-0" onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Decrease quantity">−</button>
           <span className="w-6 text-center">{qty}</span>
-          <button className="btn border" onClick={() => setQty(Math.min(p.stock, qty + 1))}>+</button>
+          <button className="btn border !min-w-11 !px-0" onClick={() => setQty(Math.min(p.stock, qty + 1))} aria-label="Increase quantity">+</button>
         </div>
       )}
-      <div className="flex gap-3">
+      <div className="h-16 md:hidden" aria-hidden />
+      <div className="fixed inset-x-0 bottom-0 z-40 flex gap-3 border-t border-gray-200 bg-white/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur md:static md:z-auto md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         <button className="btn-outline flex-1" disabled={out} onClick={() => { addToCart(item); toast.success(`${p.title} added to cart`); setAdded(true); setTimeout(() => setAdded(false), 1500); }}>
           {added ? "✓ Added" : "Add to Cart"}
         </button>
@@ -47,7 +48,6 @@ export default function BuyPanel({ product: p }: { product: Product }) {
           user ? go() : openAuth(go);
         }}>Buy Now</button>
       </div>
-      <p className="text-xs text-gray-500">💵 Cash on Delivery available</p>
     </div>
   );
 }

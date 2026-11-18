@@ -7,7 +7,7 @@ import { toast } from "./Toaster";
 export default function AdminMenu() {
   const router = useRouter();
   const [menu, setMenu] = useState(false);
-  const [me, setMe] = useState({ username: "admin", name: "", avatar: "" });
+  const [me, setMe] = useState({ username: "admin", name: "", avatar: "", role: "admin" });
 
   const load = useCallback(() => {
     fetch("/api/admin/profile").then((r) => r.json()).then((d) => d.username && setMe(d));
@@ -29,6 +29,7 @@ export default function AdminMenu() {
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white">{name[0]?.toUpperCase()}</span>
         )}
         <span className="hidden sm:inline">{name}</span>
+        {me.role === "subadmin" && <span className="hidden rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-700 sm:inline">Sub-admin</span>}
       </button>
       {menu && (
         <div className="card absolute right-0 mt-2 w-48 p-1 text-sm" onClick={() => setMenu(false)}>

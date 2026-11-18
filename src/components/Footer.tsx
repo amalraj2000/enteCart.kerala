@@ -22,11 +22,11 @@ export default async function Footer() {
   const link = "text-gray-600 hover:text-brand-700 hover:underline";
 
   const full = (
-    <footer className="mt-12 border-t bg-white">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
+    <footer className="mt-8 border-t bg-white md:mt-12">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-7 px-4 py-7 md:py-10 lg:grid-cols-4 lg:gap-8">
+        <div className="col-span-2 lg:col-span-1">
           <p className="text-xl font-extrabold tracking-tight text-brand-700">ente<span className="text-gray-900">Cart</span><span className="text-brand-500">.kerala</span></p>
-          <p className="mt-3 text-sm text-gray-600">{s.shop_about || "Kerala's friendly online store. Handpicked products, delivered to your doorstep — pay when it arrives."}</p>
+          <p className="mt-3 text-sm text-gray-600">{s.shop_about || "Kerala's friendly online store. Handpicked products, delivered to your doorstep."}</p>
           {socials.length > 0 && (
             <div className="mt-4 flex gap-2">
               {socials.map(([url, label, d]) => (
@@ -37,7 +37,7 @@ export default async function Footer() {
         </div>
         <nav aria-label="Shop" className="text-sm">
           <h3 className="mb-3 font-bold">Shop</h3>
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             <li><Link href="/" className={link}>Home</Link></li><li><Link href="/wishlist" className={link}>My wishlist</Link></li>
             <li><Link href="/orders" className={link}>My orders</Link></li><li><Link href="/cart" className={link}>Cart</Link></li>
           </ul>
@@ -49,7 +49,7 @@ export default async function Footer() {
             <li><Link href="/about" className={link}>About us</Link></li><li><Link href="/contact" className={link}>Contact us</Link></li>
           </ul>
         </nav>
-        <div className="text-sm">
+        <div className="col-span-2 text-sm lg:col-span-1">
           <h3 className="mb-3 font-bold">Contact</h3>
           <ul className="space-y-2 text-gray-600">
             {s.shop_address && <li>📍 {s.shop_address}</li>}
@@ -60,9 +60,9 @@ export default async function Footer() {
           </ul>
         </div>
       </div>
-      <div className="border-t py-4 text-center text-xs text-gray-500">© {new Date().getFullYear()} enteCart.kerala · Cash on Delivery across Kerala</div>
+      <div className="border-t px-4 py-3 text-center text-xs text-gray-500">© {new Date().getFullYear()} enteCart.kerala · All rights reserved</div>
     </footer>
   );
-  const slim = <footer className="border-t bg-white py-6 text-center text-sm text-gray-500">© enteCart.kerala · Cash on Delivery across Kerala</footer>;
+  const slim = <footer className="border-t bg-white py-6 text-center text-sm text-gray-500">© enteCart.kerala · All rights reserved</footer>;
   return <FooterSwitch full={full} slim={slim} />;
 }

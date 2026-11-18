@@ -224,3 +224,16 @@ export function validateSettings(v: ReturnType<typeof cleanSettings>): Errors {
   }
   return e;
 }
+
+// ---------- staff (sub-admins) ----------
+export const cleanStaff = (b: Record<string, unknown>) => ({ name: str(b.name).replace(/\s+/g, " "), identifier: str(b.identifier).toLowerCase(), password: typeof b.password === "string" ? b.password : "" });
+export function validateStaff(v: ReturnType<typeof cleanStaff>): Errors {
+  const e: Errors = {};
+  const n = nameErr(v.name, "Name", true);
+  if (n) e.name = n; else if (v.name.length < 2) e.name = "Name must be at least 2 characters";
+  if (!v.identifier) e.identifier = "Email or phone number is required";
+  else if (/^\d+$/.test(v.identifier)) { if (!/^\d{10}$/.test(v.identifier)) e.identifier = "Phone number must be exactly 10 digits"; }
+  else if (v.identifier.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.identifier)) e.identifier = "Enter a valid email address or 10-digit phone number";
+  const p = validatePassword(v.password); if (p) e.password = p;
+  return e;
+}

@@ -5,7 +5,7 @@ import { statusColor } from "./OrderList";
 import type { FullOrder } from "@/lib/orderItems";
 
 /** Compact order summary: photo, name, status, total and a View button. */
-export default function OrderRow({ o, href, extra }: { o: FullOrder; href: string; extra?: React.ReactNode }) {
+export default function OrderRow({ o, href, extra, statusControl }: { o: FullOrder; href: string; extra?: React.ReactNode; statusControl?: React.ReactNode }) {
   const first = o.items[0];
   const more = o.items.length - 1;
   return (
@@ -20,7 +20,7 @@ export default function OrderRow({ o, href, extra }: { o: FullOrder; href: strin
         {extra}
       </div>
       <div className="flex flex-col items-start gap-1 sm:items-end">
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(o.status)}`}>{o.status}</span>
+        {statusControl ?? <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(o.status)}`}>{o.status}</span>}
         <span className="font-bold text-brand-700">{inr(o.total)}</span>
       </div>
       <Link href={href} className="btn-outline">View</Link>

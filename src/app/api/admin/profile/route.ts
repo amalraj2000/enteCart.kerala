@@ -11,7 +11,7 @@ export async function GET() {
   if (!a) return bad("Unauthorized", 401);
   const c = await db();
   const row = (await c.execute({ sql: "SELECT name, avatar FROM users WHERE id = ?", args: [a.id] })).rows[0];
-  return NextResponse.json({ username: a.identifier, name: String(row?.name || ""), avatar: String(row?.avatar || "") });
+  return NextResponse.json({ role: a.role, username: a.identifier, name: String(row?.name || ""), avatar: String(row?.avatar || "") });
 }
 
 export async function PUT(req: Request) {

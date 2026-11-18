@@ -25,10 +25,10 @@ export default function ProductCard({ p }: { p: CardProduct }) {
             {badges(p).map((b) => <span key={b.text} className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold shadow ${b.cls}`}>{b.text}</span>)}
           </div>
         </div>
-        <div className="p-3">
-          <h3 className="line-clamp-2 min-h-10 text-sm font-medium">{p.title}</h3>
-          <p className="mt-1 text-lg font-bold text-brand-700">{inr(p.price)}</p>
-          <span className="btn-primary mt-2 w-full">View Details</span>
+        <div className="p-2.5 sm:p-3">
+          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-5">{p.title}</h3>
+          <p className="mt-0.5 text-base font-bold text-brand-700 sm:mt-1 sm:text-lg">{inr(p.price)}</p>
+          <span className="btn-primary mt-2 hidden w-full sm:inline-flex">View Details</span>
         </div>
       </Link>
       <WishlistButton productId={p.id} />

@@ -40,7 +40,7 @@ export default function AuthModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <form onSubmit={submit} noValidate className="card w-full max-w-sm space-y-4 p-6">
+      <form onSubmit={submit} noValidate className="card max-h-[92vh] w-full max-w-sm space-y-4 overflow-y-auto p-5 sm:p-6">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-brand-700">{mode === "login" ? "Welcome back" : "Create account"}</h2>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { setSession } from "@/lib/session";
+import { pwTag, setSession } from "@/lib/session";
 import { bad, clientIp, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
 import { firstError, str, validateAuth } from "@/lib/validate";
@@ -26,12 +26,16 @@ export async function POST(req: Request) {
   if (!u || !ok) return bad("Invalid phone/email or password", 401);
 
   // One login form for everyone: the user's ROLE decides where they go.
-  if (u.role === "admin") {
-    await setSession("admin", { uid: Number(u.id) });
+  if (u.role === "admin") { // the owner can never be locked out by a status change
+    await setSession("admin", { uid: Number(u.id), ph: pwTag(String(u.password)) });
     return NextResponse.json({ admin: true });
   }
   if (u.status === "blocked") return bad("Your account has been blocked. Please contact support.", 403);
   if (u.status === "inactive") return bad("Your account is inactive. Please contact support.", 403);
+  if (u.role === "subadmin") { // sub-admin: same login box, admin area
+    await setSession("admin", { uid: Number(u.id), ph: pwTag(String(u.password)) });
+    return NextResponse.json({ admin: true });
+  }
   await setSession("user", { uid: Number(u.id), identifier: String(u.email || u.phone) });
   return NextResponse.json({ user: { id: Number(u.id), identifier: String(u.email || u.phone) } });
 }

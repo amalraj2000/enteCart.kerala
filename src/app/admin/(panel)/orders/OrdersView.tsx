@@ -1,6 +1,7 @@
 import Link from "next/link";
 import OrderRow from "@/components/OrderRow";
 import Pagination from "@/components/Pagination";
+import StatusSelect from "./StatusSelect";
 import { ORDER_STATUSES } from "@/lib/types";
 import type { FullOrder } from "@/lib/orderItems";
 import type { PageInfo } from "@/lib/paginate";
@@ -22,7 +23,7 @@ export default function OrdersView({ orders, counts, status, pi }: { orders: Ful
       </div>
       {orders.length === 0 && <div className="card p-10 text-center text-gray-500">No orders here yet.</div>}
       {orders.map((o) => (
-        <OrderRow key={o.id} o={o} href={`/admin/orders/${o.id}`} extra={<p className="text-sm text-gray-600">👤 {o.customer_name} · 📞 {o.phone}</p>} />
+        <OrderRow key={`${o.id}-${o.status}`} o={o} href={`/admin/orders/${o.id}`} statusControl={<StatusSelect id={Number(o.id)} status={o.status} />} extra={<p className="text-sm text-gray-600">👤 {o.customer_name} · 📞 {o.phone}</p>} />
       ))}
       <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => href(status, p)} />
     </div>

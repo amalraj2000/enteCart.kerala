@@ -7,10 +7,10 @@ const FAQ: [string, string][] = [
   ["What payment methods do you accept?", "Cash on Delivery only. You pay in cash when your order is delivered — there’s nothing to pay online."],
   ["Do I need an account?", "Yes — a quick signup with your phone number or Gmail lets you place orders, track them under “My Orders”, and save your address and wishlist."],
   ["How can I track my order?", "Open “My Orders” after logging in. Each order shows its status: Placed, Confirmed, Shipped or Delivered."],
-  ["Can I cancel my order?", "Yes — but only while the order status is “Placed”. Open My Orders, choose the order and tap Cancel order. Once we confirm the order (status “Confirmed”), the Cancel button disappears and it can no longer be cancelled."],
+  ["Can I cancel my order?", "Yes — but only while the order status is “Placed”. Open My Orders, choose the order and tap Cancel order. Once we confirm the order (status “Confirmed”), it can no longer be cancelled."],
   ["Which areas do you deliver to?", "We deliver across Kerala. Enter your full address and pincode at checkout and we’ll take it from there."],
   ["How long does delivery take?", "Delivery times depend on your location — see our Shipping & cancellation page for details."],
-  ["Do you accept returns?", "No — returns are not available. Please check your parcel when it arrives, before you pay (we deliver on Cash on Delivery). If something looks wrong, tell the delivery person and contact us."],
+  ["Do you accept returns?", "No — returns are not available. Please check your parcel when it arrives, before you pay. If something looks wrong, tell the delivery person and contact us."],
   ["How do I change my address or password?", "Log in, then open your profile menu → Profile settings. You can edit your address and change your password there."],
 ];
 
