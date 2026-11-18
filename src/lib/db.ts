@@ -5,6 +5,8 @@ let ready: Promise<void> | null = null;
 
 function getClient(): Client {
   if (!client) {
+    if (process.env.NODE_ENV === "production" && !process.env.TURSO_DATABASE_URL)
+      throw new Error("TURSO_DATABASE_URL is not set. Add TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in your hosting environment variables.");
     client = createClient({
       // Falls back to a local file ONLY for local development.
       url: process.env.TURSO_DATABASE_URL || "file:local.db",
