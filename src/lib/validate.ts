@@ -109,12 +109,15 @@ export function validateAddress(a: Address): Errors {
 }
 // ---------- products
 export const PRODUCT_TITLE_MAX = 100;
+import { cleanStatus } from "./visibility";
 export const cleanProduct = (b: Record<string, unknown>) => ({
   title: str(b.title).replace(/\s+/g, " "),
   description: typeof b.description === "string" ? b.description.trim() : "",
   price: num(b.price),
+  original_price: b.original_price === "" || b.original_price == null ? 0 : num(b.original_price), // optional; blank = no discount
   stock: num(b.stock),
   sizes: [...new Set(str(b.sizes).split(",").map((s) => s.trim()).filter(Boolean))].join(","),
+  status: cleanStatus(b.status),
   category_id: b.category_id === "" || b.category_id == null ? null : num(b.category_id),
   images: [...new Set((Array.isArray(b.images) ? b.images : b.image_url ? [b.image_url] : []).map(str).filter(Boolean))] as string[],
 });
@@ -126,6 +129,10 @@ export function validateProduct(p: ReturnType<typeof cleanProduct>): Errors {
   else if (p.title.length > PRODUCT_TITLE_MAX) e.title = `Title must be at most ${PRODUCT_TITLE_MAX} characters`;
   if (p.description.length > 2000) e.description = "Description must be at most 2000 characters";
   if (!Number.isFinite(p.price) || p.price < 1 || p.price > 1_000_000 || Math.round(p.price * 100) / 100 !== p.price) e.price = "Price must be between ₹1 and ₹10,00,000 (max 2 decimals)";
+  if (p.original_price !== 0) {
+    if (!Number.isFinite(p.original_price) || p.original_price > 1_000_000 || Math.round(p.original_price * 100) / 100 !== p.original_price) e.original_price = "Original price must be a valid amount up to ₹10,00,000 (max 2 decimals)";
+    else if (Number.isFinite(p.price) && p.original_price < p.price) e.original_price = "Original price can't be lower than the selling price";
+  }
   if (!Number.isInteger(p.stock) || p.stock < 0 || p.stock > 100_000) e.stock = "Stock must be a whole number from 0 to 100000";
   if (p.sizes) {
     const parts = p.sizes.split(",");

@@ -8,6 +8,7 @@ import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import { bad, readJson } from "@/lib/http";
 import { expireUnpaidOrders } from "@/lib/expireUnpaid";
 import { razorpayConfigured } from "@/lib/razorpay";
+import { CATEGORY_JOIN, VISIBLE } from "@/lib/visibility";
 import { rateLimit } from "@/lib/rateLimit";
 import { getSavedAddress, sameAddress, saveAddress } from "@/lib/addresses";
 import { cleanAddress, firstError, validateAddress, validateOrderItems } from "@/lib/validate";
@@ -46,8 +47,8 @@ export async function POST(req: Request) {
   const need = new Map<number, number>();
   let total = 0;
   for (const l of lines) {
-    const p = (await c.execute({ sql: "SELECT * FROM products WHERE id = ?", args: [l.id] })).rows[0];
-    if (!p) return bad("A product in your cart no longer exists");
+    const p = (await c.execute({ sql: `SELECT p.* FROM products p ${CATEGORY_JOIN} WHERE p.id = ? AND ${VISIBLE}`, args: [l.id] })).rows[0];
+    if (!p) return bad("A product in your cart is no longer available");
     const sizes = String(p.sizes).split(",").map((s) => s.trim()).filter(Boolean);
     if (sizes.length ? !sizes.includes(l.size) : l.size !== "") return bad(`Please choose a valid size for "${p.title}"`);
     items.push({ id: l.id, title: String(p.title), price: Number(p.price), size: l.size, qty: l.qty, image_url: String(p.image_url || "") });

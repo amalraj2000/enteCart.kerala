@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bad } from "@/lib/http";
+import { CATEGORY_JOIN, VISIBLE } from "@/lib/visibility";
 import { parseId } from "@/lib/validate";
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
   if (!ids.length) return bad("No product ids");
   if (ids.length > 50) return bad("Too many products");
   const c = await db();
-  const r = await c.execute({ sql: `SELECT id, stock FROM products WHERE id IN (${ids.map(() => "?").join(",")})`, args: ids });
+  const r = await c.execute({ sql: `SELECT p.id, CASE WHEN ${VISIBLE} THEN p.stock ELSE 0 END AS stock FROM products p ${CATEGORY_JOIN} WHERE p.id IN (${ids.map(() => "?").join(",")})`, args: ids });
   const stock: Record<string, number> = Object.fromEntries(ids.map((i) => [String(i), 0])); // a deleted product counts as 0
   for (const row of r.rows) stock[String(row.id)] = Number(row.stock);
   return NextResponse.json({ stock });

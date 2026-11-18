@@ -3,6 +3,7 @@ import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getAdmin } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
+import { cleanStatus } from "@/lib/visibility";
 import { cleanCategoryName, validateCategoryName } from "@/lib/validate";
 
 export async function POST(req: Request) {
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
   if (err) return bad(err);
   const c = await db();
   try {
-    const r = await c.execute({ sql: "INSERT INTO categories (name, created_by) VALUES (?, ?)", args: [name, me.id] });
+    const r = await c.execute({ sql: "INSERT INTO categories (name, status, created_by) VALUES (?, ?, ?)", args: [name, cleanStatus(b.status), me.id] });
     revalidateCatalog();
     return NextResponse.json({ id: Number(r.lastInsertRowid) });
   } catch {

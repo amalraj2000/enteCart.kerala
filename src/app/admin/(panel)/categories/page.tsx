@@ -13,7 +13,7 @@ export default async function AdminCategories({ searchParams }: { searchParams: 
   const total = Number((await c.execute("SELECT COUNT(*) AS n FROM categories")).rows[0].n);
   const pi = pageInfo(total, parsePage((await searchParams).page));
   const rows = (await c.execute({
-    sql: `SELECT c.id, c.name, c.created_by, COUNT(p.id) AS count,
+    sql: `SELECT c.id, c.name, c.status, c.created_by, COUNT(p.id) AS count,
                  ${addedBySql("c.created_by", "cu")} AS added_by_name
           FROM categories c LEFT JOIN products p ON p.category_id = c.id LEFT JOIN users cu ON cu.id = c.created_by
           GROUP BY c.id ORDER BY c.name LIMIT ${PAGE_SIZE} OFFSET ?`,

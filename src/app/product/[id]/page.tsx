@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct } from "@/lib/catalog";
-import { inr, productImages, type Product } from "@/lib/types";
+import { discountPct, inr, productImages, type Product } from "@/lib/types";
 import Gallery from "@/components/Gallery";
 import WishlistButton from "@/components/WishlistButton";
 import BuyPanel from "@/components/BuyPanel";
@@ -22,7 +22,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <WishlistButton productId={p.id} variant="inline" />
         </div>
         {(p as Product & { vendor?: string | null }).vendor && <p className="mt-1 text-sm text-gray-500">Sold by <span className="font-semibold text-gray-700">{(p as Product & { vendor?: string | null }).vendor}</span></p>}
-        <p className="mt-2 text-3xl font-extrabold text-brand-700">{inr(p.price)}</p>
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <p className="text-3xl font-extrabold text-brand-700">{inr(p.price)}</p>
+          {discountPct(p.price, p.original_price) > 0 && <>
+            <p className="text-lg text-gray-400 line-through">{inr(Number(p.original_price))}</p>
+            <p className="rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-bold text-green-700">{discountPct(p.price, p.original_price)}% off</p>
+          </>}
+        </div>
+        {discountPct(p.price, p.original_price) > 0 && <p className="text-sm font-medium text-green-700">You save {inr(Number(p.original_price) - p.price)}</p>}
         <p className="mt-4 whitespace-pre-line text-gray-700">{p.description}</p>
         <BuyPanel product={p} />
       </div>

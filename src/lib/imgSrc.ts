@@ -2,6 +2,12 @@
 export const IMG_WIDTHS = [160, 320, 640, 1000] as const;
 
 /**
+ * Photos are cached by browsers and the CDN for a year (their ids never change). Bump this number if image ids are ever reused —
+ * e.g. after the database was wiped and numbering restarted at 1 — so nobody keeps seeing the old picture that used the same id.
+ */
+export const IMG_VERSION = "2";
+
+/**
  * Turns a stored image path into a responsive { src, srcSet }:
  *  • our own uploads (/api/images/12) → resized WebP copies made on demand and cached for a year,
  *  • Unsplash links → Unsplash's own resizer (w=, auto=format),
@@ -9,7 +15,7 @@ export const IMG_WIDTHS = [160, 320, 640, 1000] as const;
  */
 export function responsiveSrc(src: string): { src: string; srcSet?: string } {
   if (/^\/api\/images\/\d+$/.test(src))
-    return { src: `${src}?w=640`, srcSet: IMG_WIDTHS.map((w) => `${src}?w=${w} ${w}w`).join(", ") };
+    return { src: `${src}?v=${IMG_VERSION}&w=640`, srcSet: IMG_WIDTHS.map((w) => `${src}?v=${IMG_VERSION}&w=${w} ${w}w`).join(", ") };
   try {
     const u = new URL(src);
     if (u.hostname === "images.unsplash.com") {
@@ -19,3 +25,6 @@ export function responsiveSrc(src: string): { src: string; srcSet?: string } {
   } catch { /* relative or malformed → leave as is */ }
   return { src };
 }
+
+/** One big version of the picture (zoom, previews). */
+export const largeSrc = (src: string) => (/^\/api\/images\/\d+$/.test(src) ? `${src}?v=${IMG_VERSION}&w=1000` : responsiveSrc(src).src);

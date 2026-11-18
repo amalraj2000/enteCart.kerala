@@ -35,8 +35,8 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (p.category_id !== null && !(await categoryExists(p.category_id))) return bad("That category no longer exists");
   const c = await db();
   const r = await c.execute({
-    sql: "UPDATE products SET title=?, description=?, price=?, stock=?, sizes=?, image_url=?, images=?, category_id=? WHERE id=?",
-    args: [p.title, p.description, p.price, p.stock, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, id],
+    sql: "UPDATE products SET title=?, description=?, price=?, original_price=?, stock=?, sizes=?, image_url=?, images=?, category_id=?, status=? WHERE id=?",
+    args: [p.title, p.description, p.price, p.original_price, p.stock, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, p.status, id],
   });
   if (!r.rowsAffected) return bad("Product not found", 404);
   revalidateCatalog();

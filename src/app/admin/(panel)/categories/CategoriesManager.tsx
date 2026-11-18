@@ -40,6 +40,12 @@ export default function CategoriesManager({ categories, pi }: { categories: Cat[
     if (!r.ok) return toast.error(r.error || "Could not rename category");
     toast.success("Category renamed"); setEditing(null); router.refresh();
   }
+  async function toggle(c: Cat) {
+    const next = c.status === "inactive" ? "active" : "inactive";
+    const r = await call(`/api/admin/categories/${c.id}`, "PUT", { status: next });
+    r.ok ? toast.success(next === "active" ? `"${c.name}" is now visible` : `"${c.name}" and its products are hidden from customers`) : toast.error(r.error || "Could not change status");
+    router.refresh();
+  }
   async function del(c: Cat) {
     if (!confirm(`Delete "${c.name}"?${c.count ? ` Its ${c.count} product(s) will become uncategorised.` : ""}`)) return;
     const r = await call(`/api/admin/categories/${c.id}`, "DELETE");
@@ -74,12 +80,12 @@ export default function CategoriesManager({ categories, pi }: { categories: Cat[
             ) : (
               <>
                 <div className="flex-1">
-                  <p className="font-medium">{c.name}</p>
+                  <p className="font-medium">{c.name}<span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${c.status === "inactive" ? "bg-gray-200 text-gray-600" : "bg-green-100 text-green-800"}`}>{c.status === "inactive" ? "Inactive" : "Active"}</span></p>
                   <p className="text-xs text-gray-500">{c.count} product{c.count === 1 ? "" : "s"} · Added by <span className="font-medium text-gray-600">{c.added_by_name || "—"}</span></p>
                 </div>
                 {c.editable === false
                   ? <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Created by another admin">View only</span>
-                  : <><button className="btn-outline !py-1" onClick={() => { setEditing(c.id); setEditName(c.name); setEditErr(null); }}>Rename</button>
+                  : <><button className="btn border !py-1" onClick={() => toggle(c)}>{c.status === "inactive" ? "Activate" : "Deactivate"}</button><button className="btn-outline !py-1" onClick={() => { setEditing(c.id); setEditName(c.name); setEditErr(null); }}>Rename</button>
                 <button className="btn-danger !py-1" onClick={() => del(c)}>Delete</button></>}
               </>
             )}

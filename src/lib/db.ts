@@ -283,7 +283,7 @@ export function db(): Promise<Client> {
   return ready.then(getClient);
 }
 
-const SCHEMA_VERSION = "2026-11-payments-1";
+const SCHEMA_VERSION = "2026-11-mrp-1";
 
 async function setupSchema(c: Client) {
       await migrateToRelational(c);
@@ -295,6 +295,10 @@ async function setupSchema(c: Client) {
       await c.execute("ALTER TABLE users ADD COLUMN vendor_name TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists
       await c.execute("ALTER TABLE categories ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE banners ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
+      await c.execute("ALTER TABLE products ADD COLUMN original_price REAL NOT NULL DEFAULT 0").catch(() => {}); // already exists (original / MRP price; 0 = no discount)
+      // Active / inactive switch for products and categories (inactive = hidden from customers).
+      await c.execute("ALTER TABLE products ADD COLUMN status TEXT NOT NULL DEFAULT 'active'").catch(() => {}); // already exists
+      await c.execute("ALTER TABLE categories ADD COLUMN status TEXT NOT NULL DEFAULT 'active'").catch(() => {}); // already exists
       // Online payment (Razorpay). Old rows are all Cash on Delivery.
       await c.execute("ALTER TABLE orders ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'cod'").catch(() => {}); // already exists
       await c.execute("ALTER TABLE orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'Pending'").catch(() => {}); // already exists: Pending (COD) | Unpaid | Paid

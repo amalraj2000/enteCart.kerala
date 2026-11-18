@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { inr, productImages, type Product } from "@/lib/types";
+import { discountPct, inr, productImages, type Product } from "@/lib/types";
 import CardSlideshow from "./CardSlideshow";
 import WishlistButton from "./WishlistButton";
 
@@ -27,7 +27,13 @@ export default function ProductCard({ p, priority = false }: { p: CardProduct; p
         </div>
         <div className="p-2.5 sm:p-3">
           <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-5">{p.title}</h3>
-          <p className="mt-0.5 text-base font-bold text-brand-700 sm:mt-1 sm:text-lg">{inr(p.price)}</p>
+          <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 sm:mt-1">
+            <span className="text-base font-bold text-brand-700 sm:text-lg">{inr(p.price)}</span>
+            {discountPct(p.price, p.original_price) > 0 && <>
+              <span className="text-xs text-gray-400 line-through sm:text-sm">{inr(Number(p.original_price))}</span>
+              <span className="text-xs font-semibold text-green-700">{discountPct(p.price, p.original_price)}% off</span>
+            </>}
+          </p>
           <span className="btn-primary mt-2 hidden w-full sm:inline-flex">View Details</span>
         </div>
       </Link>

@@ -1,6 +1,7 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import { vendorSql } from "@/lib/staffLabel";
+import { CATEGORY_JOIN, VISIBLE } from "@/lib/visibility";
 import type { Category } from "@/lib/types";
 import type { CardProduct } from "@/components/ProductCard";
 import type { BannerData } from "@/components/BannerSlider";
@@ -15,7 +16,7 @@ export const revalidateCatalog = () => { try { revalidateTag(TAG); } catch { /* 
 
 const NEW_DAYS = 14;        // a product is "New" for this many days after being added
 const BEST_MIN_UNITS = 3;   // units sold before a product earns the "Best seller" badge
-const COLS = "id, title, price, stock, sizes, image_url, images, category_id, created_at"; // cards don't need the (long) description
+const COLS = "p.id, p.title, p.price, p.original_price, p.stock, p.sizes, p.image_url, p.images, p.category_id, p.created_at"; // cards don't need the (long) description
 const plain = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
 export const getHomeData = unstable_cache(
@@ -24,19 +25,19 @@ export const getHomeData = unstable_cache(
     const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`; // escape LIKE wildcards
     const where: string[] = [];
     const args: (string | number)[] = [];
-    if (q) { where.push("(title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')"); args.push(like, like); }
-    if (catId) { where.push("category_id = ?"); args.push(catId); }
+    if (q) { where.push("(p.title LIKE ? ESCAPE '\\' OR p.description LIKE ? ESCAPE '\\')"); args.push(like, like); }
+    if (catId) { where.push("p.category_id = ?"); args.push(catId); }
     const filtered = !!q || !!catId;
-    const isNewSql = `(created_at >= datetime('now', '-${NEW_DAYS} days')) AS is_new`;
+    const isNewSql = `(p.created_at >= datetime('now', '-${NEW_DAYS} days')) AS is_new`;
 
     // All independent reads go out together (one round-trip of waiting instead of five in a row).
     const [cats, sold, products, banners, arrivals] = await Promise.all([
-      c.execute("SELECT c.id, c.name, COUNT(p.id) AS count FROM categories c JOIN products p ON p.category_id = c.id GROUP BY c.id ORDER BY c.name"),
-      c.execute(`SELECT ${COLS.split(", ").map((x) => "p." + x).join(", ")}, SUM(oi.qty) AS units FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN products p ON p.id = oi.product_id
-                 WHERE o.status != 'Cancelled' GROUP BY p.id ORDER BY units DESC, p.id DESC LIMIT 8`),
-      c.execute({ sql: `SELECT ${COLS}, ${isNewSql} FROM products ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id DESC`, args }),
+      c.execute("SELECT c.id, c.name, COUNT(p.id) AS count FROM categories c JOIN products p ON p.category_id = c.id WHERE c.status = 'active' AND p.status = 'active' GROUP BY c.id ORDER BY c.name"),
+      c.execute(`SELECT ${COLS}, SUM(oi.qty) AS units FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN products p ON p.id = oi.product_id ${CATEGORY_JOIN}
+                 WHERE o.status != 'Cancelled' AND ${VISIBLE} GROUP BY p.id ORDER BY units DESC, p.id DESC LIMIT 8`),
+      c.execute({ sql: `SELECT ${COLS}, ${isNewSql} FROM products p ${CATEGORY_JOIN} WHERE ${[VISIBLE, ...where].join(" AND ")} ORDER BY p.id DESC`, args }),
       filtered ? Promise.resolve({ rows: [] }) : c.execute("SELECT id, title, subtitle, button_text, link, image FROM banners WHERE active = 1 ORDER BY position, id"),
-      filtered ? Promise.resolve({ rows: [] }) : c.execute(`SELECT ${COLS}, ${isNewSql} FROM products ORDER BY created_at DESC, id DESC LIMIT 4`),
+      filtered ? Promise.resolve({ rows: [] }) : c.execute(`SELECT ${COLS}, ${isNewSql} FROM products p ${CATEGORY_JOIN} WHERE ${VISIBLE} ORDER BY p.created_at DESC, p.id DESC LIMIT 4`),
     ]);
 
     const soldRows = sold.rows as unknown as (CardProduct & { units: number })[];
@@ -59,7 +60,7 @@ export const getProduct = unstable_cache(
   async (id: number) => {
     const c = await db();
     const r = await c.execute({ sql: `SELECT p.*, c.name AS category_name, ${vendorSql("p.created_by", "cu")} AS vendor
-            FROM products p LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN users cu ON cu.id = p.created_by WHERE p.id = ?`, args: [id] });
+            FROM products p LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN users cu ON cu.id = p.created_by WHERE p.id = ? AND p.status = 'active' AND (c.id IS NULL OR c.status = 'active')`, args: [id] });
     return r.rows[0] ? plain(r.rows[0]) : null;
   },
   ["product-v1"], { tags: [TAG], revalidate: 60 },

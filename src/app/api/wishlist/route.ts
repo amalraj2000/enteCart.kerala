@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CATEGORY_JOIN, VISIBLE } from "@/lib/visibility";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
   if (!u) return NextResponse.json({ ids: [], products: [] });
   const c = await db();
   if (new URL(req.url).searchParams.get("full") === "1") {
-    const r = await c.execute({ sql: "SELECT p.* FROM wishlist w JOIN products p ON p.id = w.product_id WHERE w.user_id = ? ORDER BY w.created_at DESC", args: [u.id] });
+    const r = await c.execute({ sql: `SELECT p.* FROM wishlist w JOIN products p ON p.id = w.product_id ${CATEGORY_JOIN} WHERE w.user_id = ? AND ${VISIBLE} ORDER BY w.created_at DESC`, args: [u.id] });
     return NextResponse.json({ products: r.rows });
   }
   const r = await c.execute({ sql: "SELECT product_id FROM wishlist WHERE user_id = ?", args: [u.id] });
@@ -26,7 +27,7 @@ export async function PUT(req: Request) {
   if (!id || typeof b?.on !== "boolean") return bad("Invalid request");
   const c = await db();
   if (b.on) {
-    if (!(await c.execute({ sql: "SELECT 1 FROM products WHERE id = ?", args: [id] })).rows.length) return bad("Product not found", 404);
+    if (!(await c.execute({ sql: `SELECT 1 FROM products p ${CATEGORY_JOIN} WHERE p.id = ? AND ${VISIBLE}`, args: [id] })).rows.length) return bad("Product not found", 404);
     if (Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM wishlist WHERE user_id = ?", args: [u.id] })).rows[0].n) >= 200) return bad("Your wishlist is full (200 items)");
     await c.execute({ sql: "INSERT OR IGNORE INTO wishlist (user_id, product_id) VALUES (?, ?)", args: [u.id, id] });
   } else {

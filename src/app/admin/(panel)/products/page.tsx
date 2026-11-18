@@ -28,7 +28,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
           ${where} ORDER BY p.id DESC LIMIT ${PAGE_SIZE} OFFSET ?`,
     args: [...args, pi.offset],
   })).rows as unknown as Product[];
-  const cats = (await c.execute("SELECT id, name FROM categories ORDER BY name")).rows as unknown as Category[];
+  const cats = (await c.execute("SELECT id, name, status FROM categories ORDER BY name")).rows as unknown as Category[];
   const withPerm = rows.map((r) => ({ ...JSON.parse(JSON.stringify(r)), editable: canEditRow(me, r.created_by) })); // sub admins edit only what they added
   return <ProductManager products={withPerm} categories={JSON.parse(JSON.stringify(cats))} pi={pi} staff={JSON.parse(JSON.stringify(staff))} meId={me.id} by={byId ? String(byId) : "all"} />;
 }

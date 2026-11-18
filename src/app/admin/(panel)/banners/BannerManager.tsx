@@ -1,4 +1,5 @@
 "use client";
+import { largeSrc } from "@/lib/imgSrc";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/Toaster";
@@ -82,7 +83,7 @@ export default function BannerManager({ banners, isOwner = true }: { banners: Ba
             <label className="mb-1 block text-xs font-semibold text-gray-500">Banner image <span className="font-normal">(optional — wide image, e.g. 1600×500. Without one, a green background is used)</span></label>
             <div className="relative h-36 overflow-hidden rounded-xl border bg-gradient-to-r from-brand-700 to-brand-500 sm:h-44">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {form.image && <img src={form.image} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+              {form.image && <img src={largeSrc(form.image)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
               <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
               <div className="relative flex h-full flex-col justify-center gap-1 px-5 text-white">
                 <p className="text-xl font-extrabold drop-shadow">{form.title || "Banner title"}</p>
@@ -139,7 +140,7 @@ export default function BannerManager({ banners, isOwner = true }: { banners: Ba
           <div key={b.id} className="flex flex-wrap items-center gap-3 p-3">
             <div className="relative h-16 w-32 shrink-0 overflow-hidden rounded-lg bg-gradient-to-r from-brand-700 to-brand-500">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {b.image && <img src={b.image} alt="" className="h-full w-full object-cover" />}
+              {b.image && <img src={largeSrc(b.image)} alt="" className="h-full w-full object-cover" />}
             </div>
             <div className="min-w-0 flex-1 basis-40">
               <p className="truncate font-medium">{b.title}</p>

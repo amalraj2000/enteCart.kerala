@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import { largeSrc } from "@/lib/imgSrc";
 import Img from "./Img";
 
 /**
@@ -48,7 +49,7 @@ export default function Gallery({ images, alt }: { images: string[]; alt: string
           />
           {zoom && images[i] && (
             // magnified copy follows the cursor
-            <div className="pointer-events-none absolute inset-0 hidden bg-white md:block" style={{ backgroundImage: `url("${images[i]}")`, backgroundSize: "250%", backgroundPosition: `${zoom.x}% ${zoom.y}%`, backgroundRepeat: "no-repeat" }} />
+            <div className="pointer-events-none absolute inset-0 hidden bg-white md:block" style={{ backgroundImage: `url("${largeSrc(images[i])}")`, backgroundSize: "250%", backgroundPosition: `${zoom.x}% ${zoom.y}%`, backgroundRepeat: "no-repeat" }} />
           )}
           {n > 1 && (
             <>

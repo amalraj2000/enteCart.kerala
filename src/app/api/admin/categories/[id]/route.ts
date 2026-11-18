@@ -25,12 +25,17 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (denied) return denied;
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
-  const name = cleanCategoryName(b.name);
-  const err = validateCategoryName(name);
+  // Either field may be sent: { name } to rename, { status } to switch active/inactive (or both).
+  const hasName = b.name !== undefined, hasStatus = b.status !== undefined;
+  if (!hasName && !hasStatus) return bad("Nothing to update");
+  if (hasStatus && b.status !== "active" && b.status !== "inactive") return bad("Invalid status");
+  const name = hasName ? cleanCategoryName(b.name) : "";
+  const err = hasName ? validateCategoryName(name) : null;
   if (err) return bad(err);
   const c = await db();
   try {
-    const r = await c.execute({ sql: "UPDATE categories SET name = ? WHERE id = ?", args: [name, id] });
+    const sets = [...(hasName ? ["name = ?"] : []), ...(hasStatus ? ["status = ?"] : [])];
+    const r = await c.execute({ sql: `UPDATE categories SET ${sets.join(", ")} WHERE id = ?`, args: [...(hasName ? [name] : []), ...(hasStatus ? [String(b.status)] : []), id] });
     if (!r.rowsAffected) return bad("Category not found", 404);
     revalidateCatalog();
     return NextResponse.json({ ok: true });
