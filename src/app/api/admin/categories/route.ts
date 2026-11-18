@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getAdmin } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
@@ -15,6 +16,7 @@ export async function POST(req: Request) {
   const c = await db();
   try {
     const r = await c.execute({ sql: "INSERT INTO categories (name, created_by) VALUES (?, ?)", args: [name, me.id] });
+    revalidateCatalog();
     return NextResponse.json({ id: Number(r.lastInsertRowid) });
   } catch {
     return bad("A category with this name already exists", 409);

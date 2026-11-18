@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
-import { vendorSql } from "@/lib/staffLabel";
+import { getProduct } from "@/lib/catalog";
 import { inr, productImages, type Product } from "@/lib/types";
 import Gallery from "@/components/Gallery";
 import WishlistButton from "@/components/WishlistButton";
@@ -11,10 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const c = await db();
-  const r = await c.execute({ sql: `SELECT p.*, c.name AS category_name, ${vendorSql("p.created_by", "cu")} AS vendor
-            FROM products p LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN users cu ON cu.id = p.created_by WHERE p.id = ?`, args: [Number(id) || 0] });
-  const p = r.rows[0] as unknown as Product | undefined;
+  const p = (await getProduct(Number(id) || 0)) as unknown as (Product & { vendor?: string | null; category_name?: string | null }) | null; // cached — see lib/catalog.ts
   if (!p) notFound();
   return (
     <div className="card grid gap-8 p-4 md:grid-cols-2 md:p-8">

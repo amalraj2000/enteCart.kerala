@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getAdmin } from "@/lib/session";
 import { editableOrderIds } from "@/lib/permissions";
@@ -34,5 +35,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return bad("This order was just changed by someone else — please reload.", 409);
   }
   if (next === "Cancelled") await restockOrder(c, id);
+  revalidateCatalog();
   return NextResponse.json({ ok: true });
 }

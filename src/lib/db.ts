@@ -270,6 +270,22 @@ export function db(): Promise<Client> {
     const c = getClient();
     ready = (async () => {
       await c.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+      // Fast path: once this exact schema version has been fully applied, skip the ~25 setup statements. They cost a network
+      // round trip each and used to run on every serverless cold start. Bump SCHEMA_VERSION whenever the setup code below changes.
+      const applied = (await c.execute("SELECT value FROM meta WHERE key = 'schema_applied'")).rows[0]?.value === SCHEMA_VERSION;
+      if (!applied) await setupSchema(c);
+      await ensureAdmin(c);
+    })().catch((e) => {
+      ready = null;
+      throw e;
+    });
+  }
+  return ready.then(getClient);
+}
+
+const SCHEMA_VERSION = "2026-11-payments-1";
+
+async function setupSchema(c: Client) {
       await migrateToRelational(c);
       await c.batch([...BASE_SCHEMA, ...INDEXES].map((sql) => ({ sql, args: [] })), "write");
       // Columns added to products after the first release (databases created before then).
@@ -287,22 +303,7 @@ export function db(): Promise<Client> {
       await c.execute("ALTER TABLE products ADD COLUMN created_at TEXT").catch(() => {}); // already exists (SQLite can't add a non-constant default)
       await c.execute("UPDATE products SET created_at = datetime('now') WHERE created_at IS NULL"); // existing products count as "added today" once
 
-      // The admin is a normal row in `users` with role = 'admin'. Create it once if none exists:
-      // from the old `admin` table if this DB has one, otherwise from ADMIN_EMAIL / ADMIN_PASSWORD.
-      const admins = Number((await c.execute("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'")).rows[0].n);
-      if (admins === 0) {
-        const old = (await c.execute("SELECT username, password, first_name, last_name, avatar FROM admin WHERE id = 1")).rows[0];
-        const login = (old ? String(old.username) : process.env.ADMIN_EMAIL || process.env.ADMIN_USERNAME || "").trim().toLowerCase();
-        const hash = old ? String(old.password) : process.env.ADMIN_PASSWORD ? await bcrypt.hash(process.env.ADMIN_PASSWORD, 10) : "";
-        if (login && hash) {
-          const isPhone = /^\d{10}$/.test(login);
-          await c.execute({
-            sql: `INSERT INTO users (name, email, phone, password, role, status, avatar) VALUES (?, ?, ?, ?, 'admin', 'active', ?)
-                  ON CONFLICT(${isPhone ? "phone" : "email"}) DO UPDATE SET role = 'admin', status = 'active', password = excluded.password`,
-            args: [old ? `${old.first_name || ""} ${old.last_name || ""}`.trim() : "Admin", isPhone ? null : login, isPhone ? login : null, hash, String(old?.avatar || "")],
-          });
-        }
-      }
+      await ensureAdmin(c);
 
       // Seed sample data exactly ONCE per database. The marker row is claimed atomically, so concurrent
       // cold-start requests can't both seed, and deleting the samples later never brings them back.
@@ -335,10 +336,26 @@ export function db(): Promise<Client> {
       const owned2 = await c.execute("INSERT OR IGNORE INTO meta (key, value) VALUES ('owners_cat_banner', 'done')");
       if (owned2.rowsAffected === 1)
         await c.batch(["categories", "banners"].map((t) => ({ sql: `UPDATE ${t} SET created_by = (SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1) WHERE created_by IS NULL`, args: [] })), "write");
-    })().catch((e) => {
-      ready = null;
-      throw e;
-    });
-  }
-  return ready.then(getClient);
+      await c.execute({ sql: "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_applied', ?)", args: [SCHEMA_VERSION] }); // last step: only set when everything above succeeded
 }
+
+/** Runs on every cold start (one cheap COUNT): creates the owner account only if no admin exists. */
+async function ensureAdmin(c: Client) {
+      // The admin is a normal row in `users` with role = 'admin'. Create it once if none exists:
+      // from the old `admin` table if this DB has one, otherwise from ADMIN_EMAIL / ADMIN_PASSWORD.
+      const admins = Number((await c.execute("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'")).rows[0].n);
+      if (admins === 0) {
+        const old = (await c.execute("SELECT username, password, first_name, last_name, avatar FROM admin WHERE id = 1")).rows[0];
+        const login = (old ? String(old.username) : process.env.ADMIN_EMAIL || process.env.ADMIN_USERNAME || "").trim().toLowerCase();
+        const hash = old ? String(old.password) : process.env.ADMIN_PASSWORD ? await bcrypt.hash(process.env.ADMIN_PASSWORD, 10) : "";
+        if (login && hash) {
+          const isPhone = /^\d{10}$/.test(login);
+          await c.execute({
+            sql: `INSERT INTO users (name, email, phone, password, role, status, avatar) VALUES (?, ?, ?, ?, 'admin', 'active', ?)
+                  ON CONFLICT(${isPhone ? "phone" : "email"}) DO UPDATE SET role = 'admin', status = 'active', password = excluded.password`,
+            args: [old ? `${old.first_name || ""} ${old.last_name || ""}`.trim() : "Admin", isPhone ? null : login, isPhone ? login : null, hash, String(old?.avatar || "")],
+          });
+        }
+      }
+}
+

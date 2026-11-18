@@ -29,7 +29,7 @@ export default function CartPage() {
         <h1 className="text-xl font-bold">Your Cart</h1>
         {cart.map((i) => (
           <div key={`${i.id}|${i.size}`} className="card flex gap-4 p-3">
-            <Img src={i.image_url} alt={i.title} className="h-24 w-24 rounded-lg object-cover" />
+            <Img src={i.image_url} alt={i.title} sizes="96px" className="h-24 w-24 rounded-lg object-cover" />
             <div className="min-w-0 flex-1">
               <Link href={`/product/${i.id}`} className="font-medium hover:underline">{i.title}</Link>
               {i.size && <p className="text-xs text-gray-500">Size: {i.size}</p>}

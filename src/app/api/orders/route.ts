@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
 import { notifyNewOrder } from "@/lib/notify";
+import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
 import { withImages } from "@/lib/orderItems";
@@ -91,6 +92,7 @@ export async function POST(req: Request) {
     // Runs after the response is sent (Vercel keeps the function alive for it); a failure here never affects the order.
     // Online orders are announced only once the payment succeeds (see markPaid); COD orders right away.
     if (!online) after(() => notifyNewOrder({ id: orderId, adminUrl: `${new URL(req.url).origin}/admin/orders/${orderId}` }));
+    revalidateCatalog();
     return NextResponse.json({ id: orderId, total });
   } catch {
     await tx.rollback().catch(() => {});

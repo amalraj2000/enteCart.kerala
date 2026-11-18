@@ -1,4 +1,5 @@
 "use client";
+import Img from "./Img";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -29,8 +30,7 @@ export default function BannerSlider({ banners }: { banners: BannerData[] }) {
           return (
             <div key={b.id} className="relative h-48 w-full shrink-0 sm:h-64 md:h-80" aria-hidden={k !== i} aria-label={`${k + 1} of ${n}`} role="group">
               {b.image
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={b.image} alt="" className="absolute inset-0 h-full w-full object-cover" loading={k === 0 ? "eager" : "lazy"} />
+                ? <Img src={b.image} alt="" sizes="100vw" priority={k === 0} className="absolute inset-0 h-full w-full object-cover" />
                 : <div className="absolute inset-0 bg-gradient-to-r from-brand-700 to-brand-500" />}
               <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
               <div className="relative flex h-full max-w-xl flex-col justify-center gap-2 px-6 text-white sm:px-10">

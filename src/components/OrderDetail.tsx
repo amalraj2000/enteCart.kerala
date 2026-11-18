@@ -46,7 +46,7 @@ export default function OrderDetail({ o, admin, actions }: { o: FullOrder; admin
         <ul className="divide-y">
           {o.items.map((i, n) => (
             <li key={n} className="flex items-center gap-4 p-4">
-              <Img src={i.image_url} alt={i.title} className="h-20 w-20 shrink-0 rounded-lg object-cover" />
+              <Img src={i.image_url} alt={i.title} sizes="80px" className="h-20 w-20 shrink-0 rounded-lg object-cover" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{i.title}</p>
                 {i.size && <span className="mt-1 inline-block rounded bg-brand-50 px-2 py-0.5 text-xs text-brand-700">Size: {i.size}</span>}

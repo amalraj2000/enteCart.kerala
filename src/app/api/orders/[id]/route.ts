@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
 import { withImages } from "@/lib/orderItems";
@@ -55,5 +56,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Paid online → automatic full refund to the original payment method. If Razorpay hiccups, the order is still cancelled
   // and shows as "Refund due" in Admin → Payments, where the refund can be retried with one click.
   const rf = await refundOrder(c, id);
+  revalidateCatalog();
+  revalidateCatalog();
   return NextResponse.json({ ok: true, refund: rf.ok ? "done" : "pending" });
 }

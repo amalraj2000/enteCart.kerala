@@ -1,5 +1,6 @@
 import type { Client } from "@libsql/client";
 import { reconcilePayment } from "@/lib/reconcilePayment";
+import { revalidateCatalog } from "@/lib/catalog";
 import { restockOrder } from "@/lib/orderStock";
 
 export const UNPAID_MINUTES = 30;
@@ -19,7 +20,7 @@ export async function expireUnpaidOrders(c: Client) {
       const id = Number(r.id);
       if ((await reconcilePayment(c, id)) !== "Unpaid") continue; // it was paid after all
       const u = await c.execute({ sql: "UPDATE orders SET status = 'Cancelled' WHERE id = ? AND payment_status = 'Unpaid' AND status = 'Placed'", args: [id] });
-      if (u.rowsAffected === 1) await restockOrder(c, id);
+      if (u.rowsAffected === 1) { await restockOrder(c, id); revalidateCatalog(); }
     }
   } catch { /* housekeeping must never break the request that triggered it */ }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getAdmin } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
@@ -18,5 +19,6 @@ export async function POST(req: Request) {
   if (await missingUploads(v.image ? [v.image] : [])) return bad("The uploaded banner image is missing — please upload it again");
   if ((Number((await c.execute("SELECT COUNT(*) AS n FROM banners")).rows[0].n)) >= 10) return bad("You can have at most 10 banners");
   const r = await c.execute({ sql: "INSERT INTO banners (title, subtitle, button_text, link, image, position, active, created_by) VALUES (?,?,?,?,?,?,?,?)", args: [v.title, v.subtitle, v.button_text, v.link, v.image, v.position, v.active, me.id] });
+  revalidateCatalog();
   return NextResponse.json({ id: Number(r.lastInsertRowid) });
 }

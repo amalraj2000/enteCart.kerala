@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getAdmin } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
@@ -18,5 +19,6 @@ export async function POST(req: Request) {
   if (p.category_id !== null && !(await categoryExists(p.category_id))) return bad("That category no longer exists");
   const c = await db();
   const r = await c.execute({ sql: "INSERT INTO products (title, description, price, stock, sizes, image_url, images, category_id, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))", args: [p.title, p.description, p.price, p.stock, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, me.id] });
+  revalidateCatalog();
   return NextResponse.json({ id: Number(r.lastInsertRowid) });
 }

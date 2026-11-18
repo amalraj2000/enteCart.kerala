@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getAdmin } from "@/lib/session";
 import { canEditRow } from "@/lib/permissions";
@@ -31,6 +32,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   try {
     const r = await c.execute({ sql: "UPDATE categories SET name = ? WHERE id = ?", args: [name, id] });
     if (!r.rowsAffected) return bad("Category not found", 404);
+    revalidateCatalog();
     return NextResponse.json({ ok: true });
   } catch {
     return bad("A category with this name already exists", 409);
@@ -52,5 +54,6 @@ export async function DELETE(_: Request, { params }: Ctx) {
   await c.execute({ sql: "UPDATE products SET category_id = NULL WHERE category_id = ?", args: [id] });
   const r = await c.execute({ sql: "DELETE FROM categories WHERE id = ?", args: [id] });
   if (!r.rowsAffected) return bad("Category not found", 404);
+  revalidateCatalog();
   return NextResponse.json({ ok: true });
 }

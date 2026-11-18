@@ -26,7 +26,7 @@ export default function Gallery({ images, alt }: { images: string[]; alt: string
             <button key={k} type="button" aria-label={`Photo ${k + 1}`} aria-current={k === i}
               onClick={() => setI(k)} onMouseEnter={() => setI(k)} onFocus={() => setI(k)}
               className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 bg-white md:h-[4.5rem] md:w-[4.5rem] ${k === i ? "border-brand-600" : "border-gray-200 opacity-80 hover:opacity-100"}`}>
-              <Img src={src} alt="" className="h-full w-full object-cover" />
+              <Img src={src} alt="" sizes="72px" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -43,7 +43,7 @@ export default function Gallery({ images, alt }: { images: string[]; alt: string
             if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); // swipe
             touchX.current = null;
           }}>
-          <Img src={images[i] || ""} alt={alt}
+          <Img src={images[i] || ""} alt={alt} priority sizes="(max-width: 768px) 100vw, 560px"
             className="h-full w-full object-contain transition-transform duration-150 ease-out"
           />
           {zoom && images[i] && (

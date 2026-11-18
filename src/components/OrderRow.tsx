@@ -13,7 +13,7 @@ export default function OrderRow({ o, href, extra, statusControl }: { o: FullOrd
   return (
     <div className="card flex flex-wrap items-center gap-4 p-4">
       <div className="relative shrink-0">
-        <Img src={first?.image_url || ""} alt={first?.title || "Order"} className="h-20 w-20 rounded-lg object-cover" />
+        <Img src={first?.image_url || ""} alt={first?.title || "Order"} sizes="80px" className="h-20 w-20 rounded-lg object-cover" />
         {more > 0 && <span className="absolute -bottom-1 -right-1 rounded-full bg-brand-700 px-1.5 text-xs font-semibold text-white">+{more}</span>}
       </div>
       <div className="min-w-0 flex-1 basis-48">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getAdmin } from "@/lib/session";
 import { canEditRow } from "@/lib/permissions";
@@ -38,6 +39,7 @@ export async function PUT(req: Request, { params }: Ctx) {
     args: [p.title, p.description, p.price, p.stock, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, id],
   });
   if (!r.rowsAffected) return bad("Product not found", 404);
+  revalidateCatalog();
   return NextResponse.json({ ok: true });
 }
 
@@ -53,5 +55,6 @@ export async function DELETE(_: Request, { params }: Ctx) {
   await c.execute({ sql: "UPDATE order_items SET product_id = NULL WHERE product_id = ?", args: [id] }); // past orders keep title/price/photo
   const r = await c.execute({ sql: "DELETE FROM products WHERE id = ?", args: [id] });
   if (!r.rowsAffected) return bad("Product not found", 404);
+  revalidateCatalog();
   return NextResponse.json({ ok: true });
 }

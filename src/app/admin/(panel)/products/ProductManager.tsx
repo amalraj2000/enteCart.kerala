@@ -109,7 +109,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
               {form.images.map((u: string, i: number) => (
                 <div key={u + i} className="w-28">
                   <div className="relative">
-                    <Img src={u} alt={`Photo ${i + 1}`} className="h-28 w-28 rounded-lg border object-cover" />
+                    <Img src={u} alt={`Photo ${i + 1}`} sizes="112px" className="h-28 w-28 rounded-lg border object-cover" />
                     <button type="button" aria-label="Remove photo" onClick={() => delImg(i)} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-sm text-white shadow hover:bg-red-700">×</button>
                     {i === 0 && <span className="absolute bottom-1 left-1 rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-semibold text-white">Main</span>}
                   </div>
@@ -159,7 +159,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
         {products.map((p) => (
           <div key={p.id} className="flex flex-wrap items-center gap-3 p-3">
             <div className="relative shrink-0">
-              <Img src={p.image_url} alt={p.title} className="h-14 w-14 rounded-lg object-cover" />
+              <Img src={p.image_url} alt={p.title} sizes="56px" className="h-14 w-14 rounded-lg object-cover" />
               {productImages(p).length > 1 && <span className="absolute -bottom-1 -right-1 rounded-full bg-brand-700 px-1.5 text-[10px] font-semibold text-white">{productImages(p).length}</span>}
             </div>
             <div className="min-w-0 flex-1 basis-40">
