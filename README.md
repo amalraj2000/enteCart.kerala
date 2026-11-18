@@ -30,7 +30,7 @@ Push to GitHub → import in Vercel → add the 4 env vars → Deploy.
 ## Security & validation
 - One shared rule set (`src/lib/validate.ts`) runs in the browser forms **and** is re-run on every API route; the server never trusts the client.
 - Prices, titles, sizes and stock are always read from the DB when an order is placed; stock is reserved atomically (no overselling).
-- Rate limits (DB-backed): login, admin login, signup, password change, order placement. CSRF check in `src/middleware.ts`.
+- Rate limits (DB-backed): login, admin login, register, password change, order placement. CSRF check in `src/middleware.ts`.
 - bcrypt password hashing, signed HttpOnly cookies (admin: SameSite=Strict), request body size caps, security headers.
 - In production `SESSION_SECRET` (32+ chars) is mandatory.
 

@@ -10,9 +10,11 @@ export default function BuyPanel({ product: p }: { product: Product }) {
   const [size, setSize] = useState(sizes[0] || "");
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
-  const { addToCart, buyNow, user, openAuth } = useApp();
+  const { addToCart, buyNow, user, openAuth, cart } = useApp();
   const router = useRouter();
   const out = p.stock <= 0;
+  const inCart = cart.filter((x) => x.id === p.id).reduce((s, x) => s + x.qty, 0); // all sizes of this product
+  const room = Math.max(0, p.stock - inCart);        // what can still be added to the cart
   const item = { id: p.id, title: p.title, price: p.price, image_url: p.image_url, size, qty, stock: p.stock };
 
   return (
@@ -29,6 +31,7 @@ export default function BuyPanel({ product: p }: { product: Product }) {
       )}
       <p className={`text-sm font-medium ${out ? "text-red-600" : p.stock < 10 ? "text-amber-600" : "text-brand-700"}`}>
         {out ? "Out of stock" : p.stock < 10 ? `Hurry! Only ${p.stock} left` : `In stock: ${p.stock} available`}
+        {!out && inCart > 0 && <span className="ml-2 font-normal text-gray-500">· {inCart} in your cart{room === 0 ? " (that's all we have)" : ""}</span>}
       </p>
       {!out && (
         <div className="flex items-center gap-3">
@@ -40,10 +43,15 @@ export default function BuyPanel({ product: p }: { product: Product }) {
       )}
       <div className="h-16 md:hidden" aria-hidden />
       <div className="fixed inset-x-0 bottom-0 z-40 flex gap-3 border-t border-gray-200 bg-white/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur md:static md:z-auto md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-        <button className="btn-outline flex-1" disabled={out} onClick={() => { addToCart(item); toast.success(`${p.title} added to cart`); setAdded(true); setTimeout(() => setAdded(false), 1500); }}>
-          {added ? "✓ Added" : "Add to Cart"}
+        <button className="btn-outline flex-1" disabled={out || room === 0} onClick={() => {
+          const r = addToCart(item);
+          if (r.added === 0) return toast.error(`You already have all ${r.stock} available in your cart`);
+          toast.success(r.capped ? `Added ${r.added} — only ${r.stock} in stock` : `${p.title} added to cart`);
+          setAdded(true); setTimeout(() => setAdded(false), 1500);
+        }}>
+          {out ? "Out of stock" : room === 0 ? "All in cart" : added ? "✓ Added" : "Add to Cart"}
         </button>
-        <button className="btn-primary flex-1" disabled={out} onClick={() => {
+        <button className="btn-primary flex-1" disabled={out || qty > p.stock} onClick={() => {
           const go = () => { buyNow(item); router.push("/checkout?buynow=1"); };
           user ? go() : openAuth(go);
         }}>Buy Now</button>

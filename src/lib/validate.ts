@@ -34,14 +34,14 @@ export function validatePassword(raw: unknown, label = "Password"): string | nul
   if (raw.length > 72) return `${label} must be at most 72 characters`;
   return null;
 }
-export function validateAuth(b: Record<string, unknown>, mode: "login" | "signup"): Errors {
+export function validateAuth(b: Record<string, unknown>, mode: "login" | "register"): Errors {
   const e: Errors = {};
   const raw = str(b.identifier);
-  // Login: only basic sanity (the server decides user vs admin). Signup: strict phone / Gmail rules.
-  const i = mode === "signup" ? validateIdentifier(b.identifier) : !raw ? "Phone number or email is required" : raw.length > 80 || /\s/.test(raw) ? "Enter a valid phone number or email" : null;
+  // Login: only basic sanity (the server decides user vs admin). Register: strict phone / Gmail rules.
+  const i = mode === "register" ? validateIdentifier(b.identifier) : !raw ? "Phone number or email is required" : raw.length > 80 || /\s/.test(raw) ? "Enter a valid phone number or email" : null;
   if (i) e.identifier = i;
-  // login: only presence/length (don't leak the password policy); signup: full policy
-  const p = mode === "signup" ? validatePassword(b.password) : typeof b.password !== "string" || !b.password ? "Password is required" : b.password.length > 72 ? "Password is too long" : null;
+  // login: only presence/length (don't leak the password policy); register: full policy
+  const p = mode === "register" ? validatePassword(b.password) : typeof b.password !== "string" || !b.password ? "Password is required" : b.password.length > 72 ? "Password is too long" : null;
   if (p) e.password = p;
   return e;
 }

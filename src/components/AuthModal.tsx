@@ -9,7 +9,7 @@ import { type Errors, firstError, validateAuth } from "@/lib/validate";
 
 export default function AuthModal() {
   const { authOpen, closeAuth, setUser, afterAuth } = useApp();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [errs, setErrs] = useState<Errors>({});
@@ -61,7 +61,7 @@ export default function AuthModal() {
         <button className="btn-primary w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Log in" : "Register"}</button>
         <p className="text-center text-sm text-gray-600">
           {mode === "login" ? "New here?" : "Already registered?"}{" "}
-          <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => { setMode(mode === "login" ? "signup" : "login"); setErrs({}); }}>
+          <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => { setMode(mode === "login" ? "register" : "login"); setErrs({}); }}>
             {mode === "login" ? "Register" : "Log in"}
           </button>
         </p>

@@ -6,11 +6,12 @@ import { useApp } from "@/components/Providers";
 import Img from "@/components/Img";
 import { toast } from "@/components/Toaster";
 import { inr } from "@/lib/types";
+import { stockProblems } from "@/lib/stockCheck";
 
 export default function CartPage() {
-  const { cart, cartTotal, setQty, removeItem, user, openAuth, resetBuyNow } = useApp();
+  const { cart, cartTotal, setQty, removeItem, user, openAuth, resetBuyNow, syncStock } = useApp();
   const router = useRouter();
-  useEffect(() => resetBuyNow(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { resetBuyNow(); syncStock(); }, []); // eslint-disable-line react-hooks/exhaustive-deps  — live stock on every visit
 
   if (!cart.length)
     return (
@@ -20,6 +21,7 @@ export default function CartPage() {
         <Link href="/" className="btn-primary mt-4">Continue shopping</Link>
       </div>
     );
+  const problems = stockProblems(cart);
   const go = () => router.push("/checkout");
   return (
     <div className="grid gap-6 md:grid-cols-3">
@@ -31,11 +33,13 @@ export default function CartPage() {
             <div className="min-w-0 flex-1">
               <Link href={`/product/${i.id}`} className="font-medium hover:underline">{i.title}</Link>
               {i.size && <p className="text-xs text-gray-500">Size: {i.size}</p>}
+              {i.stock <= 0 && <p className="text-xs font-semibold text-red-600">Out of stock — remove it to continue</p>}
+              {i.stock > 0 && i.stock < 10 && <p className="text-xs font-medium text-amber-600">Only {i.stock} left</p>}
               <p className="font-bold text-brand-700">{inr(i.price)}</p>
               <div className="mt-2 flex items-center gap-2">
                 <button className="btn border !min-w-10 !px-0 !py-0" onClick={() => setQty(i.id, i.size, i.qty - 1)} aria-label="Decrease quantity">−</button>
                 <span className="w-6 text-center text-sm">{i.qty}</span>
-                <button className="btn border !min-w-10 !px-0 !py-0" onClick={() => setQty(i.id, i.size, i.qty + 1)} aria-label="Increase quantity">+</button>
+                <button className="btn border !min-w-10 !px-0 !py-0" disabled={i.stock <= 0 || cart.filter((x) => x.id === i.id).reduce((s, x) => s + x.qty, 0) >= i.stock} onClick={() => setQty(i.id, i.size, i.qty + 1)} aria-label="Increase quantity">+</button>
                 <button className="ml-2 py-2 text-sm text-red-600 hover:underline" onClick={() => { removeItem(i.id, i.size); toast.success("Item removed from cart"); }}>Remove</button>
               </div>
             </div>
@@ -48,7 +52,8 @@ export default function CartPage() {
         <h2 className="hidden font-bold md:block">Order Summary</h2>
         <div className="md:flex md:justify-between"><span className="block text-xs text-gray-500 md:inline md:text-base md:text-gray-900">Total</span><span className="text-xl font-extrabold text-brand-700">{inr(cartTotal)}</span></div>
         <p className="hidden text-xs text-gray-500 md:block">Payment: Cash on Delivery</p>
-        <button className="btn-primary flex-1 md:w-full md:flex-none" onClick={() => (user ? go() : openAuth(go))}>Proceed to Checkout</button>
+        {problems.length > 0 && <p className="hidden text-xs font-medium text-red-600 md:block">{problems[0]}</p>}
+        <button className="btn-primary flex-1 md:w-full md:flex-none" disabled={problems.length > 0} title={problems[0]} onClick={() => (user ? go() : openAuth(go))}>{problems.length ? "Fix cart to continue" : "Proceed to Checkout"}</button>
       </div>
     </div>
   );

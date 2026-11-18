@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { customerNameSql } from "@/lib/userName";
 import { inr } from "@/lib/types";
 import { statusColor } from "@/components/OrderList";
 import { withImages } from "@/lib/orderItems";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function UserDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const c = await db();
-  const u = (await c.execute({ sql: "SELECT id, name, email, phone, status, role, avatar, address_id, created_at FROM users WHERE id = ?", args: [Number(id) || 0] })).rows[0] as any;
+  const u = (await c.execute({ sql: `SELECT u.id, ${customerNameSql("u")} AS name, u.email, u.phone, u.status, u.role, u.avatar, u.address_id, u.created_at FROM users u WHERE u.id = ?`, args: [Number(id) || 0] })).rows[0] as any;
   if (!u || u.role !== "user") notFound(); // staff accounts live under Admins
   const orders = await withImages((await c.execute({ sql: "SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC", args: [u.id] })).rows, { admins: true });
 

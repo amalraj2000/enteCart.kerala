@@ -9,10 +9,10 @@ import { firstError, str, validateAuth } from "@/lib/validate";
 export async function POST(req: Request) {
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
-  const err = firstError(validateAuth(b, "signup"));
+  const err = firstError(validateAuth(b, "register"));
   if (err) return bad(err);
   const id = str(b.identifier).toLowerCase();
-  if (!(await rateLimit(`signup:${clientIp(req)}`, 10, 3600))) return bad("Too many sign-ups from this network. Try again later.", 429);
+  if (!(await rateLimit(`register:${clientIp(req)}`, 10, 3600))) return bad("Too many registrations from this network. Try again later.", 429);
 
   const c = await db();
   const exists = await c.execute({ sql: "SELECT id FROM users WHERE email = ? OR phone = ?", args: [id, id] });

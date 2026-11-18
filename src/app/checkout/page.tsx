@@ -7,6 +7,7 @@ import { inr } from "@/lib/types";
 import Req from "@/components/Req";
 import InfoTip from "@/components/InfoTip";
 import { CANCEL_POLICY } from "@/lib/orderPolicy";
+import { stockProblems } from "@/lib/stockCheck";
 import FieldError from "@/components/FieldError";
 import { ADDRESS_LIMITS, type Errors, cleanAddress, firstError, validateAddress } from "@/lib/validate";
 
@@ -16,7 +17,7 @@ const FIELDS: [string, string, string?][] = [
 ];
 
 function Checkout() {
-  const { checkoutItems, user, openAuth, clearCart, resetBuyNow, authReady } = useApp();
+  const { checkoutItems, user, openAuth, clearCart, resetBuyNow, authReady, syncStock } = useApp();
   const router = useRouter();
   const [form, setForm] = useState<Record<string, string>>({ state: "Kerala" });
   const [errs, setErrs] = useState<Errors>({});
@@ -36,6 +37,8 @@ function Checkout() {
       }));
     });
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { syncStock(); }, []); // eslint-disable-line react-hooks/exhaustive-deps — re-check live stock when checkout opens
+  const problems = stockProblems(checkoutItems);
   const total = checkoutItems.reduce((s, i) => s + i.price * i.qty, 0);
 
   if (!checkoutItems.length) return <p className="card p-8 text-center text-gray-600">Nothing to checkout. <a className="text-brand-700 underline" href="/">Go shopping</a></p>;
@@ -44,6 +47,7 @@ function Checkout() {
 
   async function place(e: React.FormEvent) {
     e.preventDefault();
+    if (problems.length) return toast.error(problems[0]);
     const clean = cleanAddress(form);
     const ve = validateAddress(clean); // same rules the server enforces
     setErrs(ve);
@@ -85,7 +89,13 @@ function Checkout() {
         <p className="flex items-center gap-2 text-xs text-gray-600"><InfoTip title="Cancellation policy" lines={CANCEL_POLICY} /> Cancel while “Placed”. Once “Confirmed”, no cancellation or returns.</p>
         <div className="h-16 md:hidden" aria-hidden />
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur md:static md:z-auto md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-          <button className="btn-primary w-full" disabled={busy}>{busy ? "Placing order…" : `Place Order (COD) · ${inr(total)}`}</button>
+          {problems.length > 0 && (
+            <div role="alert" className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs font-medium text-red-700">
+              {problems.map((p) => <p key={p}>{p}</p>)}
+              <a href="/cart" className="font-semibold underline">Update your cart</a>
+            </div>
+          )}
+          <button className="btn-primary w-full" disabled={busy || problems.length > 0}>{busy ? "Placing order…" : `Place Order (COD) · ${inr(total)}`}</button>
         </div>
       </form>
       <div className="card h-fit space-y-2 p-5">
