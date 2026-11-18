@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "./Providers";
 import { toast } from "./Toaster";
@@ -14,7 +14,14 @@ export default function AuthModal() {
   const [password, setPassword] = useState("");
   const [errs, setErrs] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+  const [newHint, setNewHint] = useState(false); // floating "new here? register" tip after a failed login
   const router = useRouter();
+  useEffect(() => { // the tip hides itself after a few seconds, and whenever the modal closes or switches mode
+    if (!newHint) return;
+    const t = setTimeout(() => setNewHint(false), 9000);
+    return () => clearTimeout(t);
+  }, [newHint]);
+  useEffect(() => { if (!authOpen) setNewHint(false); }, [authOpen]);
   if (!authOpen) return null;
 
   async function submit(e: React.FormEvent) {
@@ -26,7 +33,13 @@ export default function AuthModal() {
     const r = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier, password }) });
     const d = await r.json().catch(() => ({}));
     setBusy(false);
-    if (!r.ok) { toast.error(d.error || "Something went wrong"); return; }
+    if (!r.ok) {
+      toast.error(d.error || "Something went wrong");
+      // A wrong login is often a first-time visitor who hasn't registered yet. The same tip is shown for every failed login,
+      // so it never reveals whether an account exists.
+      if (mode === "login" && r.status === 401) setNewHint(true);
+      return;
+    }
     if (d.admin) { // the admin's email: straight to the dashboard
       toast.success(d.welcome ? `Welcome, ${d.welcome}` : "Welcome back");
       setIdentifier(""); setPassword(""); setErrs({}); closeAuth();
@@ -40,6 +53,18 @@ export default function AuthModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      {newHint && mode === "login" && (
+        <div role="status" className="fixed inset-x-0 top-16 z-[60] mx-auto flex w-[calc(100%-2rem)] max-w-sm animate-[toast-up_.25s_ease-out] items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 shadow-xl">
+          <span className="text-xl" aria-hidden>👋</span>
+          <div className="min-w-0 flex-1 text-sm text-amber-900">
+            <p className="font-semibold">New to enteCart.kerala?</p>
+            <p>If you haven’t created an account yet, please click <b>Register</b> first.</p>
+            <button type="button" className="mt-2 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700"
+              onClick={() => { setMode("register"); setErrs({}); setNewHint(false); }}>Register now</button>
+          </div>
+          <button type="button" aria-label="Dismiss" className="text-xl leading-none text-amber-700/70 hover:text-amber-900" onClick={() => setNewHint(false)}>×</button>
+        </div>
+      )}
       <form onSubmit={submit} noValidate className="card max-h-[92vh] w-full max-w-sm space-y-4 overflow-y-auto p-5 sm:p-6">
         <div className="flex items-start justify-between">
           <div>
@@ -61,7 +86,7 @@ export default function AuthModal() {
         <button className="btn-primary w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Log in" : "Register"}</button>
         <p className="text-center text-sm text-gray-600">
           {mode === "login" ? "New here?" : "Already registered?"}{" "}
-          <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => { setMode(mode === "login" ? "register" : "login"); setErrs({}); }}>
+          <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => { setMode(mode === "login" ? "register" : "login"); setErrs({}); setNewHint(false); }}>
             {mode === "login" ? "Register" : "Log in"}
           </button>
         </p>
