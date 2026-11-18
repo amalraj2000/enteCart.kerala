@@ -31,14 +31,16 @@ export const getHomeData = unstable_cache(
     const isNewSql = `(p.created_at >= datetime('now', '-${NEW_DAYS} days')) AS is_new`;
 
     // All independent reads go out together (one round-trip of waiting instead of five in a row).
-    const [cats, sold, products, banners, arrivals] = await Promise.all([
+    const [cats, sold, products, banners, arrivals, sw] = await Promise.all([
       c.execute("SELECT c.id, c.name, COUNT(p.id) AS count FROM categories c JOIN products p ON p.category_id = c.id WHERE c.status = 'active' AND p.status = 'active' GROUP BY c.id ORDER BY c.name"),
       c.execute(`SELECT ${COLS}, SUM(oi.qty) AS units FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN products p ON p.id = oi.product_id ${CATEGORY_JOIN}
                  WHERE o.status != 'Cancelled' AND ${VISIBLE} GROUP BY p.id ORDER BY units DESC, p.id DESC LIMIT 8`),
       c.execute({ sql: `SELECT ${COLS}, ${isNewSql} FROM products p ${CATEGORY_JOIN} WHERE ${[VISIBLE, ...where].join(" AND ")} ORDER BY p.id DESC`, args }),
       filtered ? Promise.resolve({ rows: [] }) : c.execute("SELECT id, title, subtitle, button_text, link, image FROM banners WHERE active = 1 ORDER BY position, id"),
       filtered ? Promise.resolve({ rows: [] }) : c.execute(`SELECT ${COLS}, ${isNewSql} FROM products p ${CATEGORY_JOIN} WHERE ${VISIBLE} ORDER BY p.created_at DESC, p.id DESC LIMIT 4`),
+      c.execute("SELECT key, value FROM settings WHERE key IN ('show_new_arrivals', 'show_best_sellers')"),
     ]);
+    const off = new Set(sw.rows.filter((r) => String(r.value) === "0").map((r) => String(r.key))); // missing = on
 
     const soldRows = sold.rows as unknown as (CardProduct & { units: number })[];
     const bestIds = new Set(soldRows.filter((s) => Number(s.units) >= BEST_MIN_UNITS).slice(0, 4).map((s) => Number(s.id)));
@@ -51,6 +53,8 @@ export const getHomeData = unstable_cache(
       arrivals: (arrivals.rows as unknown as CardProduct[]).map((p) => ({ ...mark(p), is_new: p.is_new })),
       bestRow: soldRows.filter((s) => Number(s.units) > 0).slice(0, 4).map((p) => ({ ...mark(p), is_new: newIds.has(Number(p.id)) ? 1 : 0 })),
       banners: banners.rows as unknown as BannerData[],
+      showArrivals: !off.has("show_new_arrivals"),
+      showBest: !off.has("show_best_sellers"),
     });
   },
   ["home-v1"], { tags: [TAG], revalidate: 60 },

@@ -33,7 +33,7 @@ export default function SettingsForm({ initial }: { initial: Settings }) {
     const r = await fetch("/api/admin/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clean) });
     setBusy(false);
     if (!r.ok) return toast.error((await r.json().catch(() => ({}))).error || "Could not save");
-    toast.success("Shop details saved"); router.refresh();
+    toast.success("Settings saved"); router.refresh();
   }
 
   return (
@@ -48,7 +48,23 @@ export default function SettingsForm({ initial }: { initial: Settings }) {
           <FieldError msg={errs[k]} />
         </label>
       ))}
-      <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : "Save details"}</button>
+      <div className="space-y-2 border-t pt-4">
+        <div><h2 className="font-bold">Home page sections</h2><p className="text-sm text-gray-500">Turn a section off to hide it from the home page. Products themselves stay in the shop.</p></div>
+        {([["show_new_arrivals", "✨ New arrivals", "The row of the newest products"], ["show_best_sellers", "🔥 Best sellers", "The row of most-ordered products"]] as const).map(([k, label, sub]) => {
+          const on = v[k] !== "0";
+          return (
+            <div key={k} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div><p className="text-sm font-medium">{label}</p><p className="text-xs text-gray-500">{sub}</p></div>
+              <button type="button" role="switch" aria-checked={on} aria-label={`${label} section`} onClick={() => setV({ ...v, [k]: on ? "0" : "1" })}
+                className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? "bg-brand-600" : "bg-gray-300"}`}>
+                <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
+                <span className="sr-only">{on ? "On" : "Off"}</span>
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : "Save settings"}</button>
     </form>
   );
 }

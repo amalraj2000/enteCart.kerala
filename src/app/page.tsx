@@ -26,7 +26,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   const q = typeof rawQ === "string" ? rawQ.trim().slice(0, 100) : "";
   const catId = parseId(rawCat);
   const filtered = !!q || !!catId;
-  const { cats, products, arrivals, bestRow, banners } = await getHomeData(q, catId); // cached — see lib/catalog.ts
+  const { cats, products, arrivals, bestRow, banners, showArrivals, showBest } = await getHomeData(q, catId); // cached — see lib/catalog.ts
   const active = cats.find((x) => Number(x.id) === catId);
 
   const chip = (id: number | null) => `/?${new URLSearchParams({ ...(q ? { q } : {}), ...(id ? { category: String(id) } : {}) }).toString()}`;
@@ -56,8 +56,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
         </nav>
       )}
 
-      {!filtered && <Row title="✨ New arrivals" hint="Fresh in the shop" products={arrivals} />}
-      {!filtered && <Row title="🔥 Best sellers" hint="Most loved by our customers" products={bestRow} />}
+      {!filtered && showArrivals && <Row title="✨ New arrivals" hint="Fresh in the shop" products={arrivals} />}
+      {!filtered && showBest && <Row title="🔥 Best sellers" hint="Most loved by our customers" products={bestRow} />}
 
       <h2 className="mb-4 text-xl font-bold">{q ? `Results for “${q}”` : active ? active.name : "All products"}{q && active ? ` in ${active.name}` : ""} <span className="text-sm font-normal text-gray-500">({products.length})</span></h2>
       {products.length === 0 && <p className="text-gray-500">No products found.</p>}

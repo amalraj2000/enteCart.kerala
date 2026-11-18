@@ -7,7 +7,7 @@
  *  • Only static, versioned files are cached: /_next/static/*, /icons/*, and product photos.
  * Bump VERSION to drop all old caches.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC = `ek-static-${VERSION}`;
 const IMAGES = `ek-img-${VERSION}`;
 const OFFLINE = "/offline";

@@ -216,6 +216,8 @@ export const cleanSettings = (b: Record<string, unknown>) => ({
   shop_phone: str(b.shop_phone).replace(/\s+/g, ""), shop_whatsapp: str(b.shop_whatsapp).replace(/[\s+]/g, ""), shop_email: str(b.shop_email).toLowerCase(),
   shop_address: str(b.shop_address), shop_hours: str(b.shop_hours), shop_about: str(b.shop_about),
   social_instagram: str(b.social_instagram), social_facebook: str(b.social_facebook), social_youtube: str(b.social_youtube),
+  show_new_arrivals: b.show_new_arrivals === "0" || b.show_new_arrivals === false ? "0" : "1",
+  show_best_sellers: b.show_best_sellers === "0" || b.show_best_sellers === false ? "0" : "1",
 });
 export function validateSettings(v: ReturnType<typeof cleanSettings>): Errors {
   const e: Errors = {};
