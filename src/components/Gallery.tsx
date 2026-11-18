@@ -20,9 +20,9 @@ export default function Gallery({ images, alt }: { images: string[]; alt: string
   }
 
   return (
-    <div className="flex flex-col-reverse gap-3 md:flex-row">
+    <div className="flex min-w-0 max-w-full flex-col-reverse gap-3 md:flex-row">
       {n > 1 && (
-        <div className="flex gap-2 overflow-x-auto md:max-h-[34rem] md:flex-col md:overflow-y-auto md:overflow-x-visible md:pr-1">
+        <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto md:max-h-[34rem] md:flex-col md:overflow-y-auto md:overflow-x-visible md:pr-1">
           {images.map((src, k) => (
             <button key={k} type="button" aria-label={`Photo ${k + 1}`} aria-current={k === i}
               onClick={() => setI(k)} onMouseEnter={() => setI(k)} onFocus={() => setI(k)}
