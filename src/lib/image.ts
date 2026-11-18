@@ -17,13 +17,13 @@ export function toAvatar(file: File): Promise<string> {
 }
 
 /** Client-side: scale a product photo to max 1000px and compress to JPEG under ~350 KB, returned as a data URL. */
-export function toPhoto(file: File): Promise<string> {
+export function toPhoto(file: File, maxSide = 1000): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return reject(new Error(`${file.name}: please choose a JPG, PNG or WebP image`));
     if (file.size > 15 * 1024 * 1024) return reject(new Error(`${file.name}: image must be under 15 MB`));
     const img = new Image();
     img.onload = () => {
-      const scale = Math.min(1, 1000 / Math.max(img.width, img.height));
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
       const c = document.createElement("canvas");
       c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
       const ctx = c.getContext("2d")!;

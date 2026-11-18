@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { CartItem } from "@/lib/types";
+import { toast } from "./Toaster";
 
 type User = { id: number; identifier: string; name?: string; email?: string | null; phone?: string | null; avatar?: string } | null;
 type Ctx = {
@@ -12,6 +13,7 @@ type Ctx = {
   removeItem: (id: number, size: string) => void; clearCart: () => void;
   buyNow: (i: CartItem) => void; resetBuyNow: () => void; checkoutItems: CartItem[];
   afterAuth: () => void;
+  wishlist: number[]; toggleWish: (productId: number) => void;
 };
 const C = createContext<Ctx>(null as any);
 export const useApp = () => useContext(C);
@@ -23,6 +25,27 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = useState<(() => void) | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
+  const [wishlist, setWishlist] = useState<number[]>([]);
+
+  // Wishlist lives in the database for logged-in customers.
+  useEffect(() => {
+    if (!user) return setWishlist([]);
+    fetch("/api/wishlist").then((r) => r.json()).then((d) => setWishlist(d.ids || []));
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const openAuthRef = { current: (cb?: () => void) => { setPending(() => cb || null); setAuthOpen(true); } };
+  const applyWish = (productId: number, on: boolean) => {
+    setWishlist((w) => (on ? (w.includes(productId) ? w : [...w, productId]) : w.filter((x) => x !== productId))); // optimistic
+    fetch("/api/wishlist", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, on }) }).then(async (r) => {
+      if (r.ok) return toast.success(on ? "Added to wishlist" : "Removed from wishlist");
+      setWishlist((w) => (on ? w.filter((x) => x !== productId) : [...w, productId]));
+      toast.error((await r.json().catch(() => ({}))).error || "Could not update wishlist");
+    });
+  };
+  // Logged out: open the login box, then add the product as soon as login succeeds.
+  const toggleWish = (productId: number) => {
+    if (!user) return openAuthRef.current(() => applyWish(productId, true));
+    applyWish(productId, !wishlist.includes(productId));
+  };
 
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => setUser(d.user)).finally(() => setAuthReady(true));
@@ -53,6 +76,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     afterAuth: () => { setAuthOpen(false); const p = pending; setPending(null); p?.(); },
     refreshUser: async () => { const d = await (await fetch("/api/auth/me")).json(); setUser(d.user); },
     logout: async () => { await fetch("/api/auth/logout", { method: "POST" }); setUser(null); },
+    wishlist, toggleWish,
     cart, cartCount: cart.reduce((s, i) => s + i.qty, 0), cartTotal: cart.reduce((s, i) => s + i.qty * i.price, 0),
     addToCart, setQty, removeItem, clearCart: () => setCart([]),
     buyNow: (i) => setBuyNowItem(i), resetBuyNow: () => setBuyNowItem(null),

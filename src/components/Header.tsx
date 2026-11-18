@@ -19,7 +19,7 @@ function SearchBox() {
 }
 
 export default function Header() {
-  const { user, authReady, openAuth, logout, cartCount } = useApp();
+  const { user, authReady, openAuth, logout, cartCount, wishlist } = useApp();
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   if (usePathname().startsWith("/admin"))
@@ -41,6 +41,10 @@ export default function Header() {
         </Link>
         <div className="order-3 flex w-full md:order-none md:w-auto md:flex-1 md:px-6"><Suspense><SearchBox /></Suspense></div>
         <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <Link href="/wishlist" className="btn-outline relative !px-3" aria-label={`Wishlist (${wishlist.length})`} title="Wishlist">
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current" strokeWidth="2" strokeLinejoin="round" aria-hidden><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 2.8 5 6.2 5c2 0 3.2 1 3.8 2 .6-1 1.8-2 3.8-2 3.4 0 5.3 3.3 3.8 6.7C19.5 16.4 12 21 12 21z" /></svg>
+            {wishlist.length > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs text-white">{wishlist.length}</span>}
+          </Link>
           <Link href="/cart" className="btn-outline relative" aria-label="Cart">
             🛒 Cart
             {cartCount > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs text-white">{cartCount}</span>}
@@ -60,6 +64,7 @@ export default function Header() {
                 <div className="card absolute right-0 mt-2 w-44 p-1 text-sm" onClick={() => setMenu(false)}>
                   <Link href="/account" className="block rounded px-3 py-2 hover:bg-brand-50">Profile settings</Link>
                   <Link href="/orders" className="block rounded px-3 py-2 hover:bg-brand-50">My Orders</Link>
+                  <Link href="/wishlist" className="block rounded px-3 py-2 hover:bg-brand-50">My Wishlist</Link>
                   <button className="block w-full rounded px-3 py-2 text-left hover:bg-brand-50" onClick={async () => { await logout(); toast.success("Logged out"); router.push("/"); }}>Logout</button>
                 </div>
               )}

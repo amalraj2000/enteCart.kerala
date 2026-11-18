@@ -39,6 +39,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
     [
       { sql: "UPDATE orders SET user_id = NULL, address_id = NULL WHERE user_id = ?", args: [id] }, // orders stay for the shop's records
       { sql: "UPDATE users SET address_id = NULL WHERE id = ?", args: [id] },
+      { sql: "DELETE FROM wishlist WHERE user_id = ?", args: [id] },
       { sql: "DELETE FROM addresses WHERE user_id = ?", args: [id] },
       { sql: "DELETE FROM users WHERE id = ? AND role = 'user'", args: [id] },
     ],

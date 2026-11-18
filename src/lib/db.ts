@@ -96,7 +96,8 @@ const BASE_SCHEMA = [
     sizes TEXT NOT NULL DEFAULT '',
     image_url TEXT NOT NULL DEFAULT '',
     images TEXT NOT NULL DEFAULT '',
-    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL
+    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   IF_NOT_EXISTS(ORDERS_DDL()),
   IF_NOT_EXISTS(ORDER_ITEMS_DDL),
@@ -113,6 +114,27 @@ const BASE_SCHEMA = [
     key TEXT PRIMARY KEY,
     count INTEGER NOT NULL,
     reset_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS banners (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    subtitle TEXT NOT NULL DEFAULT '',
+    button_text TEXT NOT NULL DEFAULT '',
+    link TEXT NOT NULL DEFAULT '',
+    image TEXT NOT NULL DEFAULT '',
+    position INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS wishlist (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, product_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT ''
   )`,
   // Only read when upgrading a very old database that kept the admin in its own table.
   `CREATE TABLE IF NOT EXISTS admin (
@@ -232,6 +254,8 @@ export function db(): Promise<Client> {
       // Columns added to products after the first release (databases created before then).
       await c.execute("ALTER TABLE products ADD COLUMN category_id INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE products ADD COLUMN images TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists
+      await c.execute("ALTER TABLE products ADD COLUMN created_at TEXT").catch(() => {}); // already exists (SQLite can't add a non-constant default)
+      await c.execute("UPDATE products SET created_at = datetime('now') WHERE created_at IS NULL"); // existing products count as "added today" once
 
       // The admin is a normal row in `users` with role = 'admin'. Create it once if none exists:
       // from the old `admin` table if this DB has one, otherwise from ADMIN_EMAIL / ADMIN_PASSWORD.
@@ -261,7 +285,7 @@ export function db(): Promise<Client> {
               [
                 ...SEED_CATEGORIES.map((name) => ({ sql: "INSERT OR IGNORE INTO categories (name) VALUES (?)", args: [name] })),
                 ...SEED.map(([title, description, price, stock, sizes, image, cat]) => ({
-                  sql: "INSERT INTO products (title, description, price, stock, sizes, image_url, images, category_id) VALUES (?,?,?,?,?,?,?,(SELECT id FROM categories WHERE name = ?))",
+                  sql: "INSERT INTO products (title, description, price, stock, sizes, image_url, images, category_id, created_at) VALUES (?,?,?,?,?,?,?,(SELECT id FROM categories WHERE name = ?),datetime('now'))",
                   args: [title, description, price, stock, sizes, image, JSON.stringify([image]), cat],
                 })),
               ],

@@ -176,3 +176,51 @@ export function validateCategoryName(name: string): string | null {
   if (!/^[\p{L}\p{N}][\p{L}\p{N} &'’,.\-]*$/u.test(name)) return "Category name can only contain letters, numbers, spaces and & ' , . -";
   return null;
 }
+
+// ---------- banners ----------
+export const cleanBanner = (b: Record<string, unknown>) => ({
+  title: str(b.title).replace(/\s+/g, " "),
+  subtitle: str(b.subtitle).replace(/\s+/g, " "),
+  button_text: str(b.button_text).replace(/\s+/g, " "),
+  link: str(b.link),
+  image: str(b.image),
+  active: b.active === true || b.active === 1 ? 1 : 0,
+  position: num(b.position),
+});
+export function validateBanner(b: ReturnType<typeof cleanBanner>): Errors {
+  const e: Errors = {};
+  if (b.title.length < 2 || b.title.length > 60) e.title = "Title must be 2–60 characters";
+  if (b.subtitle.length > 120) e.subtitle = "Subtitle must be at most 120 characters";
+  if (b.button_text.length > 20) e.button_text = "Button text must be at most 20 characters";
+  if (b.link) {
+    const internal = /^\/(?!\/)[\w\-./?=&%#]*$/.test(b.link); // e.g. /?category=3 — never "//host" or "javascript:"
+    let external = false;
+    try { external = new URL(b.link).protocol === "https:"; } catch {}
+    if (b.link.length > 300 || (!internal && !external)) e.link = "Link must start with / (a page on this site) or https://";
+  }
+  if (b.button_text && !b.link) e.link = "Add a link for the button";
+  if (b.image && !/^\/api\/images\/\d{1,12}$/.test(b.image)) e.image = "Please upload the banner image again";
+  if (!Number.isInteger(b.position) || b.position < 0 || b.position > 1000) e.position = "Invalid position";
+  return e;
+}
+
+// ---------- shop settings ----------
+export const cleanSettings = (b: Record<string, unknown>) => ({
+  shop_phone: str(b.shop_phone).replace(/\s+/g, ""), shop_whatsapp: str(b.shop_whatsapp).replace(/[\s+]/g, ""), shop_email: str(b.shop_email).toLowerCase(),
+  shop_address: str(b.shop_address), shop_hours: str(b.shop_hours), shop_about: str(b.shop_about),
+  social_instagram: str(b.social_instagram), social_facebook: str(b.social_facebook), social_youtube: str(b.social_youtube),
+});
+export function validateSettings(v: ReturnType<typeof cleanSettings>): Errors {
+  const e: Errors = {};
+  if (v.shop_phone && !/^\d{10}$/.test(v.shop_phone)) e.shop_phone = "Phone must be exactly 10 digits";
+  if (v.shop_whatsapp && !/^\d{10,13}$/.test(v.shop_whatsapp)) e.shop_whatsapp = "WhatsApp number: 10 digits (or with country code, digits only)";
+  if (v.shop_email && (v.shop_email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.shop_email))) e.shop_email = "Enter a valid email address";
+  if (v.shop_address.length > 200) e.shop_address = "Address must be at most 200 characters";
+  if (v.shop_hours.length > 80) e.shop_hours = "Opening hours must be at most 80 characters";
+  if (v.shop_about.length > 250) e.shop_about = "About text must be at most 250 characters";
+  for (const k of ["social_instagram", "social_facebook", "social_youtube"] as const) {
+    if (!v[k]) continue;
+    try { if (new URL(v[k]).protocol !== "https:" || v[k].length > 200) throw 0; } catch { e[k] = "Enter a full link starting with https://"; }
+  }
+  return e;
+}

@@ -5,6 +5,8 @@ import { useApp } from "@/components/Providers";
 import { toast } from "@/components/Toaster";
 import { inr } from "@/lib/types";
 import Req from "@/components/Req";
+import InfoTip from "@/components/InfoTip";
+import { CANCEL_POLICY } from "@/lib/orderPolicy";
 import FieldError from "@/components/FieldError";
 import { ADDRESS_LIMITS, type Errors, cleanAddress, firstError, validateAddress } from "@/lib/validate";
 
@@ -63,7 +65,10 @@ function Checkout() {
   return (
     <div className="grid gap-6 md:grid-cols-3">
       <form onSubmit={place} noValidate className="card space-y-3 p-5 md:col-span-2">
-        <h1 className="text-xl font-bold">Delivery details</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-xl font-bold">Delivery details</h1>
+          <span className="flex items-center gap-2 text-xs text-gray-500">Cancellation policy <InfoTip title="Cancellation policy" lines={CANCEL_POLICY} /></span>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {FIELDS.map(([k, label, type]) => (
             <label key={k} className="text-sm font-medium">{label}<Req />
@@ -77,6 +82,7 @@ function Checkout() {
           ))}
         </div>
         <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm">💵 <b>Cash on Delivery</b> — pay when your order arrives.</div>
+        <p className="flex items-center gap-2 text-xs text-gray-600"><InfoTip title="Cancellation policy" lines={CANCEL_POLICY} /> Cancel while “Placed”. Once “Confirmed”, no cancellation or returns.</p>
         <button className="btn-primary w-full" disabled={busy}>{busy ? "Placing order…" : `Place Order (COD) · ${inr(total)}`}</button>
       </form>
       <div className="card h-fit space-y-2 p-5">

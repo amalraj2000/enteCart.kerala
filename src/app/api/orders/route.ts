@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { notifyNewOrder } from "@/lib/notify";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
 import { withImages } from "@/lib/orderItems";
@@ -81,6 +82,8 @@ export async function POST(req: Request) {
       items.map((i) => ({ sql: "INSERT INTO order_items (order_id, product_id, title, size, qty, price, image_url) VALUES (?,?,?,?,?,?,?)", args: [orderId, i.id, i.title, i.size, i.qty, i.price, i.image_url] })),
     );
     await tx.commit();
+    // Runs after the response is sent (Vercel keeps the function alive for it); a failure here never affects the order.
+    after(() => notifyNewOrder({ id: orderId, total, itemCount: items.reduce((n, i) => n + i.qty, 0), adminUrl: `${new URL(req.url).origin}/admin/orders/${orderId}` }));
     return NextResponse.json({ id: orderId, total });
   } catch {
     await tx.rollback().catch(() => {});

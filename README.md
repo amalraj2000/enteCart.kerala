@@ -45,3 +45,12 @@ Push to GitHub → import in Vercel → add the 4 env vars → Deploy.
 
 Orders keep a snapshot of the shipping address and of each line's title/price, so history stays correct if a customer edits their address or a product is changed or deleted.
 Databases created with the older layout are upgraded automatically (in one transaction) on the first request.
+
+## WhatsApp order alerts
+Every new order sends a WhatsApp message to the owner: "🛒 New order received! Order #12 • ₹2,997 • 3 items" with a link to the order in admin.
+Uses the free [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/) service (unofficial, fine for one owner):
+1. Save **+34 644 51 95 23** in your phone contacts (name it CallMeBot).
+2. On WhatsApp, send that contact the message: `I allow callmebot to send me messages`
+3. It replies with your **API key**.
+4. Add `ADMIN_WHATSAPP` (your number, e.g. `919544437950`) and `CALLMEBOT_API_KEY` in Vercel → Environment Variables, then Redeploy.
+Nothing is sent (and nothing breaks) while either variable is empty. Customer name, phone and address are never included in the message.

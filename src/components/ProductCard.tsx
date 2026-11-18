@@ -1,0 +1,37 @@
+import Link from "next/link";
+import { inr, productImages, type Product } from "@/lib/types";
+import CardSlideshow from "./CardSlideshow";
+import WishlistButton from "./WishlistButton";
+
+export type CardProduct = Product & { is_new?: number | boolean; best?: boolean };
+
+/** Up to two badges, most important first. */
+function badges(p: CardProduct): { text: string; cls: string }[] {
+  const b: { text: string; cls: string }[] = [];
+  if (p.stock <= 0) b.push({ text: "Out of stock", cls: "bg-red-600 text-white" });
+  else if (p.stock <= 5) b.push({ text: `Only ${p.stock} left`, cls: "bg-amber-500 text-white" });
+  if (p.best) b.push({ text: "Best seller", cls: "bg-brand-700 text-white" });
+  if (p.is_new) b.push({ text: "New", cls: "bg-blue-600 text-white" });
+  return b.slice(0, 2);
+}
+
+export default function ProductCard({ p }: { p: CardProduct }) {
+  return (
+    <div className="card group relative overflow-hidden transition hover:shadow-md">
+      <Link href={`/product/${p.id}`} className="block">
+        <div className="relative">
+          <CardSlideshow images={productImages(p)} alt={p.title} />
+          <div className="pointer-events-none absolute left-2 top-2 flex flex-col items-start gap-1">
+            {badges(p).map((b) => <span key={b.text} className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold shadow ${b.cls}`}>{b.text}</span>)}
+          </div>
+        </div>
+        <div className="p-3">
+          <h3 className="line-clamp-2 min-h-10 text-sm font-medium">{p.title}</h3>
+          <p className="mt-1 text-lg font-bold text-brand-700">{inr(p.price)}</p>
+          <span className="btn-primary mt-2 w-full">View Details</span>
+        </div>
+      </Link>
+      <WishlistButton productId={p.id} />
+    </div>
+  );
+}

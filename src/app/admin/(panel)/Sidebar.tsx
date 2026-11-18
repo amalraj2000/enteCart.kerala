@@ -8,7 +8,9 @@ const LINKS = [
   ["/admin/categories", "Categories", "🏷️"],
   ["/admin/products", "Products", "📦"],
   ["/admin/orders", "Orders", "🧾"],
+  ["/admin/banners", "Banners", "🖼️"],
   ["/admin/users", "Users", "👥"],
+  ["/admin/settings", "Settings", "⚙️"],
 ];
 
 export default function Sidebar() {
