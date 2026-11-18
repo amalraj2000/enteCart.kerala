@@ -21,7 +21,6 @@ export async function markPaid(c: Client, orderId: number, razorpayOrderId: stri
   });
   const r = await c.execute({ sql: "UPDATE orders SET payment_status = 'Paid', razorpay_payment_id = ? WHERE id = ? AND payment_status = 'Unpaid'", args: [paymentId, orderId] });
   if (r.rowsAffected === 1) { // first time only — owner gets the WhatsApp alert now that the money is in
-    const n = (await c.execute({ sql: "SELECT COALESCE(SUM(qty),0) n FROM order_items WHERE order_id = ?", args: [orderId] })).rows[0];
-    await notifyNewOrder({ id: orderId, total: Number(o?.total || 0), itemCount: Number(n.n), paidOnline: true, adminUrl: origin ? `${origin}/admin/orders/${orderId}` : undefined });
+    await notifyNewOrder({ id: orderId, paidOnline: true, adminUrl: origin ? `${origin}/admin/orders/${orderId}` : undefined });
   }
 }

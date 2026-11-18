@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     await tx.commit();
     // Runs after the response is sent (Vercel keeps the function alive for it); a failure here never affects the order.
     // Online orders are announced only once the payment succeeds (see markPaid); COD orders right away.
-    if (!online) after(() => notifyNewOrder({ id: orderId, total, itemCount: items.reduce((n, i) => n + i.qty, 0), adminUrl: `${new URL(req.url).origin}/admin/orders/${orderId}` }));
+    if (!online) after(() => notifyNewOrder({ id: orderId, adminUrl: `${new URL(req.url).origin}/admin/orders/${orderId}` }));
     return NextResponse.json({ id: orderId, total });
   } catch {
     await tx.rollback().catch(() => {});

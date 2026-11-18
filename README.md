@@ -47,10 +47,10 @@ Orders keep a snapshot of the shipping address and of each line's title/price, s
 Databases created with the older layout are upgraded automatically (in one transaction) on the first request.
 
 ## WhatsApp order alerts
-Every new order sends a WhatsApp message to the owner: "🛒 New order received! Order #12 • ₹2,997 • 3 items" with a link to the order in admin.
+Every new order sends a WhatsApp message to the owner with the **customer's name, phone and delivery address, the ordered items (size, quantity, price), the total, and the payment type** (Cash on Delivery or paid online), plus a link to the order in admin. Online orders are sent once the payment succeeds.
 Uses the free [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/) service (unofficial, fine for one owner):
 1. Save **+34 644 51 95 23** in your phone contacts (name it CallMeBot).
 2. On WhatsApp, send that contact the message: `I allow callmebot to send me messages`
 3. It replies with your **API key**.
 4. Add `ADMIN_WHATSAPP` (your number, e.g. `919544437950`) and `CALLMEBOT_API_KEY` in Vercel → Environment Variables, then Redeploy.
-Nothing is sent (and nothing breaks) while either variable is empty. Customer name, phone and address are never included in the message.
+Nothing is sent (and nothing breaks) while either variable is empty. The message only ever goes to your own number (`ADMIN_WHATSAPP`).
