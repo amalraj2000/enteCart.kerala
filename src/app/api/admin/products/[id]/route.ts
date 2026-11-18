@@ -1,0 +1,39 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { isAdmin } from "@/lib/session";
+import { bad, readJson } from "@/lib/http";
+import { categoryExists, missingUploads } from "@/lib/productImages";
+import { cleanProduct, firstError, parseId, validateProduct } from "@/lib/validate";
+
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function PUT(req: Request, { params }: Ctx) {
+  if (!(await isAdmin())) return bad("Unauthorized", 401);
+  const id = parseId((await params).id);
+  if (!id) return bad("Invalid product id");
+  const b = await readJson(req);
+  if (!b) return bad("Invalid request");
+  const p = cleanProduct(b);
+  const err = firstError(validateProduct(p));
+  if (err) return bad(err);
+  const miss = await missingUploads(p.images);
+  if (miss) return bad(miss);
+  if (p.category_id !== null && !(await categoryExists(p.category_id))) return bad("That category no longer exists");
+  const c = await db();
+  const r = await c.execute({
+    sql: "UPDATE products SET title=?, description=?, price=?, stock=?, sizes=?, image_url=?, images=?, category_id=? WHERE id=?",
+    args: [p.title, p.description, p.price, p.stock, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, id],
+  });
+  if (!r.rowsAffected) return bad("Product not found", 404);
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(_: Request, { params }: Ctx) {
+  if (!(await isAdmin())) return bad("Unauthorized", 401);
+  const id = parseId((await params).id);
+  if (!id) return bad("Invalid product id");
+  const c = await db();
+  const r = await c.execute({ sql: "DELETE FROM products WHERE id = ?", args: [id] });
+  if (!r.rowsAffected) return bad("Product not found", 404);
+  return NextResponse.json({ ok: true });
+}
