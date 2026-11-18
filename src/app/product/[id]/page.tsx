@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SHOP_VENDOR } from "@/lib/staffLabel";
 import { getProduct } from "@/lib/catalog";
 import { discountPct, inr, productImages, type Product } from "@/lib/types";
 import Gallery from "@/components/Gallery";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const p = (await getProduct(Number(id) || 0)) as unknown as (Product & { vendor?: string | null; category_name?: string | null }) | null; // cached — see lib/catalog.ts
+  const p = (await getProduct(Number(id) || 0)) as unknown as (Product & { category_name?: string | null }) | null; // cached — see lib/catalog.ts
   if (!p) notFound();
   return (
     <div className="card grid gap-8 p-4 md:grid-cols-2 md:p-8">
@@ -21,7 +22,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <h1 className="text-2xl font-bold">{p.title}</h1>
           <WishlistButton productId={p.id} variant="inline" />
         </div>
-        {(p as Product & { vendor?: string | null }).vendor && <p className="mt-1 text-sm text-gray-500">Sold by <span className="font-semibold text-gray-700">{(p as Product & { vendor?: string | null }).vendor}</span></p>}
+        <p className="mt-1 text-sm text-gray-500">Sold by <span className="font-semibold text-gray-700">{SHOP_VENDOR}</span></p>
         <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <p className="text-3xl font-extrabold text-brand-700">{inr(p.price)}</p>
           {discountPct(p.price, p.original_price) > 0 && <>

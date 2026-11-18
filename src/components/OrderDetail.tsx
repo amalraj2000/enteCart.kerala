@@ -1,6 +1,8 @@
 import Img from "./Img";
 import { inr } from "@/lib/types";
 import { statusColor } from "./OrderList";
+import { SHOP_VENDOR } from "@/lib/staffLabel";
+import { formatIst } from "@/lib/istDate";
 import { payLabel } from "@/lib/payLabel";
 import type { FullOrder } from "@/lib/orderItems";
 
@@ -17,7 +19,7 @@ export default function OrderDetail({ o, admin, actions }: { o: FullOrder; admin
       <section className="card flex flex-wrap items-center gap-3 p-5">
         <div>
           <h1 className="text-xl font-bold text-brand-700">Order #{o.id}</h1>
-          <p className="text-sm text-gray-500">Placed on {o.created_at}</p>
+          <p className="text-sm text-gray-500">Placed on {formatIst(o.created_at)}</p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(o.status)}`}>{o.status}</span>
         <div className="ml-auto">{actions}</div>
@@ -50,7 +52,7 @@ export default function OrderDetail({ o, admin, actions }: { o: FullOrder; admin
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{i.title}</p>
                 {i.size && <span className="mt-1 inline-block rounded bg-brand-50 px-2 py-0.5 text-xs text-brand-700">Size: {i.size}</span>}
-                {!admin && i.vendor && <span className="ml-1 mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Sold by {i.vendor}</span>}
+                {!admin && <span className="ml-1 mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Sold by {SHOP_VENDOR}</span>}
                 {admin && i.added_by && <span className="ml-1 mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600" title="The admin who added this product">Added by {i.added_by}</span>}
                 <p className="mt-1 text-sm text-gray-500">{inr(i.price)} × {i.qty}</p>
               </div>

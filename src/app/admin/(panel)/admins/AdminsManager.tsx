@@ -100,7 +100,7 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
           </label>
           <label className="block text-sm font-medium">Vendor name<Req />
             <input className={`input mt-1 ${errs.vendor_name ? "!border-red-500" : ""}`} maxLength={VENDOR_NAME_MAX} value={form.vendor_name} onChange={(e) => setForm({ ...form, vendor_name: e.target.value })} placeholder="e.g. Meera Traders" />
-            <span className="mt-1 block text-xs font-normal text-gray-500">The shop name customers see on this sub admin's products ("Sold by …") and in their orders. It is also used to welcome them.</span>
+            <span className="mt-1 block text-xs font-normal text-gray-500">An internal label for this sub admin, shown only in the admin panel and used to welcome them. Customers always see “Sold by enteCart.kerala”.</span>
             <FieldError msg={errs.vendor_name} />
           </label>
           <label className="block text-sm font-medium">Login — email or 10-digit phone<Req />
@@ -176,7 +176,7 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <form onSubmit={saveVendor} noValidate className="card w-full max-w-sm space-y-3 p-5">
             <div className="flex items-start justify-between"><h2 className="text-lg font-bold text-brand-700">Vendor name</h2><button type="button" className="text-2xl leading-none text-gray-400" onClick={() => setVendorFor(null)} aria-label="Close">×</button></div>
-            <p className="text-sm text-gray-600">Shown to customers as “Sold by …” for <b>{vendorFor.name || login(vendorFor)}</b>’s products.</p>
+            <p className="text-sm text-gray-600">An internal label for <b>{vendorFor.name || login(vendorFor)}</b>, shown only in the admin panel. Customers always see “Sold by enteCart.kerala”.</p>
             <input className={`input ${vendorErr ? "!border-red-500" : ""}`} maxLength={VENDOR_NAME_MAX} value={vendorVal} onChange={(e) => setVendorVal(e.target.value)} autoFocus placeholder="e.g. Meera Traders" />
             <FieldError msg={vendorErr ?? undefined} />
             <button className="btn-primary w-full">Save vendor name</button>

@@ -1,7 +1,7 @@
 /**
  * SQL snippets that turn a users row (alias `a`) into the text we show.
  *   staff screens  → "Meera Traders (Sub admin)" / "Super admin"
- *   customer pages → the vendor's brand name only ("Meera Traders" / "enteCart.kerala"), never a person's name or email.
+ *   customer pages → always "enteCart.kerala" (SHOP_VENDOR); a vendor's name or a person's name/email is never shown to customers.
  */
 export const staffNameSql = (a: string) => `CASE
   WHEN ${a}.role = 'subadmin' THEN COALESCE(NULLIF(${a}.vendor_name, ''), NULLIF(${a}.name, ''), ${a}.email, ${a}.phone) || ' (Sub admin)'
@@ -12,7 +12,10 @@ export const staffNameSql = (a: string) => `CASE
 export const addedBySql = (createdByCol: string, a: string) =>
   `CASE WHEN ${createdByCol} IS NULL THEN NULL WHEN ${a}.id IS NULL THEN 'Former admin' ELSE ${staffNameSql(a)} END`;
 
-/** What customers see as "Sold by": a sub admin's vendor name, otherwise the shop itself. */
+/** Customers always see the shop itself as the seller. A sub admin's vendor name is an internal label (admin screens only). */
+export const SHOP_VENDOR = "enteCart.kerala";
+
+/** The vendor label for ADMIN screens: a sub admin's vendor name, otherwise the shop itself. Never send this to customers. */
 export const vendorSql = (createdByCol: string, a: string) =>
   `CASE WHEN ${createdByCol} IS NULL THEN NULL
         WHEN ${a}.role = 'subadmin' AND COALESCE(${a}.vendor_name, '') != '' THEN ${a}.vendor_name

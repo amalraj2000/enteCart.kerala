@@ -13,17 +13,24 @@ function ViewOnly({ status }: { status: string }) {
     </div>
   );
 }
+import DateFilter, { type Range } from "./DateFilter";
+import { inr } from "@/lib/types";
+import { longDay, longMonth } from "@/lib/istDate";
 import { ORDER_STATUSES } from "@/lib/types";
 import type { FullOrder } from "@/lib/orderItems";
 import type { PageInfo } from "@/lib/paginate";
 
 const dot: Record<string, string> = { Placed: "bg-amber-400", Confirmed: "bg-amber-500", Shipped: "bg-blue-500", Delivered: "bg-green-500", Cancelled: "bg-red-500" };
 
-export default function OrdersView({ orders, counts, status, pi, scoped = false }: { orders: (FullOrder & { editable?: boolean })[]; counts: Record<string, number>; status: string; pi: PageInfo; scoped?: boolean }) {
-  const href = (s: string, page = 1) => `/admin/orders?${new URLSearchParams({ ...(s !== "All" ? { status: s } : {}), ...(page > 1 ? { page: String(page) } : {}) })}`;
+export default function OrdersView({ orders, counts, status, pi, scoped = false, range, sales, today, yesterday, thisMonth }: { orders: (FullOrder & { editable?: boolean })[]; counts: Record<string, number>; status: string; pi: PageInfo; scoped?: boolean; range: Range; sales: number; today: string; yesterday: string; thisMonth: string }) {
+  const dateParam: Record<string, string> = range.kind === "all" ? { date: "all" } : range.kind === "month" ? { month: range.value } : { date: range.value };
+  const href = (s: string, page = 1) => `/admin/orders?${new URLSearchParams({ ...dateParam, ...(s !== "All" ? { status: s } : {}), ...(page > 1 ? { page: String(page) } : {}) })}`;
+  const title = range.kind === "all" ? "All dates" : range.kind === "month" ? longMonth(range.value) : range.value === today ? `Today · ${longDay(range.value)}` : longDay(range.value);
   return (
     <div className="space-y-4">
-      <div><h1 className="text-xl font-bold">Orders</h1>{scoped && <p className="text-sm text-gray-500">You can view every order, but change the status only of orders that include products you added.</p>}</div>
+      <div><h1 className="text-xl font-bold">Orders <span className="text-base font-medium text-gray-500">— {title}</span></h1>{scoped && <p className="text-sm text-gray-500">You can view every order, but change the status only of orders that include products you added.</p>}</div>
+      <DateFilter range={range} today={today} yesterday={yesterday} thisMonth={thisMonth} status={status} />
+      <p className="text-sm text-gray-600"><b>{counts.All ?? 0}</b> order{counts.All === 1 ? "" : "s"} · Sales <b className="text-brand-700">{inr(sales)}</b> <span className="text-xs text-gray-400">(excludes cancelled and unpaid online orders)</span></p>
       <div className="flex flex-wrap gap-2">
         {["All", ...ORDER_STATUSES].map((s) => (
           <Link key={s} href={href(s)} className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${status === s ? "border-brand-600 bg-brand-600 text-white" : "bg-white hover:bg-brand-50"}`}>
@@ -32,7 +39,7 @@ export default function OrdersView({ orders, counts, status, pi, scoped = false 
           </Link>
         ))}
       </div>
-      {orders.length === 0 && <div className="card p-10 text-center text-gray-500">No orders here yet.</div>}
+      {orders.length === 0 && <div className="card p-10 text-center text-gray-500">No orders for this date. Try another date, or “All dates”.</div>}
       {orders.map((o) => (
         <OrderRow key={`${o.id}-${o.status}`} o={o} href={`/admin/orders/${o.id}`} statusControl={o.editable === false ? <ViewOnly status={o.status} /> : <StatusSelect id={Number(o.id)} status={o.status} />} extra={<p className="text-sm text-gray-600">👤 {o.customer_name} · 📞 {o.phone}</p>} />
       ))}

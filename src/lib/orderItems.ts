@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { addedBySql, vendorSql } from "./staffLabel";
+import { SHOP_VENDOR, addedBySql, vendorSql } from "./staffLabel";
 
 export type OrderItem = { id: number | null; title: string; price: number; size?: string; qty: number; image_url: string; added_by?: string | null; vendor?: string | null };
 export type FullOrder = Record<string, any> & { items: OrderItem[] };
@@ -22,8 +22,9 @@ export async function withImages(rows: any[], opts: { admins?: boolean } = {}): 
   })).rows;
   const by = new Map<number, OrderItem[]>();
   for (const i of items) {
+    // Customers always see the shop as the seller, never a vendor's name.
     const list = by.get(Number(i.order_id)) ?? [];
-    list.push({ id: i.product_id === null ? null : Number(i.product_id), title: String(i.title), price: Number(i.price), size: String(i.size || ""), qty: Number(i.qty), image_url: String(i.image_url || i.product_image || ""), vendor: i.vendor ? String(i.vendor) : null, ...(opts.admins ? { added_by: i.added_by ? String(i.added_by) : null } : {}) });
+    list.push({ id: i.product_id === null ? null : Number(i.product_id), title: String(i.title), price: Number(i.price), size: String(i.size || ""), qty: Number(i.qty), image_url: String(i.image_url || i.product_image || ""), vendor: opts.admins ? (i.vendor ? String(i.vendor) : null) : SHOP_VENDOR, ...(opts.admins ? { added_by: i.added_by ? String(i.added_by) : null } : {}) });
     by.set(Number(i.order_id), list);
   }
   return orders.map((o) => ({ ...o, items: by.get(Number(o.id)) ?? [] }));

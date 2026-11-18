@@ -1,6 +1,5 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
-import { vendorSql } from "@/lib/staffLabel";
 import { CATEGORY_JOIN, VISIBLE } from "@/lib/visibility";
 import type { Category } from "@/lib/types";
 import type { CardProduct } from "@/components/ProductCard";
@@ -63,8 +62,8 @@ export const getHomeData = unstable_cache(
 export const getProduct = unstable_cache(
   async (id: number) => {
     const c = await db();
-    const r = await c.execute({ sql: `SELECT p.*, c.name AS category_name, ${vendorSql("p.created_by", "cu")} AS vendor
-            FROM products p LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN users cu ON cu.id = p.created_by WHERE p.id = ? AND p.status = 'active' AND (c.id IS NULL OR c.status = 'active')`, args: [id] });
+    const r = await c.execute({ sql: `SELECT p.*, c.name AS category_name
+            FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ? AND p.status = 'active' AND (c.id IS NULL OR c.status = 'active')`, args: [id] });
     return r.rows[0] ? plain(r.rows[0]) : null;
   },
   ["product-v1"], { tags: [TAG], revalidate: 60 },
