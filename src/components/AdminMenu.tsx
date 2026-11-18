@@ -7,7 +7,7 @@ import { toast } from "./Toaster";
 export default function AdminMenu() {
   const router = useRouter();
   const [menu, setMenu] = useState(false);
-  const [me, setMe] = useState({ username: "admin", first_name: "", last_name: "", avatar: "" });
+  const [me, setMe] = useState({ username: "admin", name: "", avatar: "" });
 
   const load = useCallback(() => {
     fetch("/api/admin/profile").then((r) => r.json()).then((d) => d.username && setMe(d));
@@ -18,7 +18,7 @@ export default function AdminMenu() {
     return () => window.removeEventListener("admin-profile-updated", load);
   }, [load]);
 
-  const name = me.first_name || me.username;
+  const name = me.name?.split(" ")[0] || me.username;
   return (
     <div className="relative">
       <button onClick={() => setMenu(!menu)} className="flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 py-1 pl-1 pr-3 text-sm font-semibold text-brand-700 hover:bg-brand-100" aria-label="Admin account">

@@ -52,9 +52,9 @@ export default function Header() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
                 ) : (
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/25">{(user.first_name || user.identifier)[0].toUpperCase()}</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/25">{(user.name || user.identifier)[0].toUpperCase()}</span>
                 )}
-                {(user.first_name || user.identifier.split("@")[0]).slice(0, 12)}
+                {(user.name?.split(" ")[0] || user.identifier.split("@")[0]).slice(0, 12)}
               </button>
               {menu && (
                 <div className="card absolute right-0 mt-2 w-44 p-1 text-sm" onClick={() => setMenu(false)}>

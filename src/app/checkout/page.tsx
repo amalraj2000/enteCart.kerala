@@ -22,12 +22,12 @@ function Checkout() {
   // Prefill: name from the account, everything else from the most recent order's address.
   useEffect(() => {
     if (!user) return;
-    const accountName = [user.first_name, user.last_name].filter(Boolean).join(" ");
+    const accountName = user.name || "";
     Promise.all([fetch("/api/auth/address").then((r) => r.json()), fetch("/api/orders").then((r) => r.json())]).then(([a, d]) => {
       const last = a.address || d.orders?.[0]; // saved address wins, else the latest order's
       setForm((f) => ({
         customer_name: accountName || last?.customer_name || "",
-        phone: last?.phone || (/^\d{10}$/.test(user.identifier) ? user.identifier : ""),
+        phone: last?.phone || user.phone || "",
         house_name: last?.house_name || "", street_name: last?.street_name || "", city: last?.city || "",
         state: last?.state || "Kerala", pincode: last?.pincode || "",
         ...Object.fromEntries(Object.entries(f).filter(([k, v]) => v && k !== "state")),

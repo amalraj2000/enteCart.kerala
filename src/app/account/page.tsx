@@ -26,7 +26,7 @@ export default function AccountPage() {
     if (!user) return;
     (async () => {
       const saved = (await (await fetch("/api/auth/address")).json()).address;
-      const full = [user.first_name, user.last_name].filter(Boolean).join(" ");
+      const full = user.name || "";
       if (saved) return setAddr(saved);
       const last = (await (await fetch("/api/orders")).json()).orders?.[0];
       if (last) setAddr({ customer_name: last.customer_name || full, phone: last.phone, house_name: last.house_name, street_name: last.street_name, city: last.city, state: last.state, pincode: last.pincode });
@@ -73,7 +73,7 @@ export default function AccountPage() {
     setPw({ currentPassword: "", newPassword: "", confirmPassword: "" });
     toast.success("Password changed successfully");
   }
-  const fullName = (addr.customer_name || [user.first_name, user.last_name].filter(Boolean).join(" ")).trim();
+  const fullName = (addr.customer_name || user.name || "").trim();
   const initials = (fullName[0] || user.identifier[0]).toUpperCase();
 
   return (
@@ -111,7 +111,10 @@ export default function AccountPage() {
             </div>
             <p className="mt-1 text-xs text-gray-500">Your name comes from the Full Name on your address.</p>
           </div>
-          <p className="text-xs text-gray-500">Login: <b>{user.identifier}</b></p>
+          <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            <div className="flex gap-2"><dt className="text-gray-500">Email</dt><dd className="break-all font-medium">{user.email || "—"}</dd></div>
+            <div className="flex gap-2"><dt className="text-gray-500">Phone</dt><dd className="font-medium">{user.phone || "—"}</dd></div>
+          </dl>
           <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
         </form>
       ) : tab === "address" ? (

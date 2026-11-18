@@ -50,32 +50,27 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const all = async (sql: string, args: (string | number)[] = []) => (await c.execute({ sql, args })).rows as unknown as Record<string, unknown>[];
 
   const [users, products, orders, revenue, outOfStock, lowStock, pending] = await Promise.all([
-    one("SELECT COUNT(*) n FROM users"), one("SELECT COUNT(*) n FROM products"), one("SELECT COUNT(*) n FROM orders"),
+    one("SELECT COUNT(*) n FROM users WHERE role = 'user'"), one("SELECT COUNT(*) n FROM products"), one("SELECT COUNT(*) n FROM orders"),
     one("SELECT COALESCE(SUM(total),0) n FROM orders WHERE status != 'Cancelled'"),
     one("SELECT COUNT(*) n FROM products WHERE stock = 0"), one("SELECT COUNT(*) n FROM products WHERE stock BETWEEN 1 AND 5"),
     one("SELECT COUNT(*) n FROM orders WHERE status IN ('Placed','Confirmed')"),
   ]);
-  const inRange = async (table: string, from: string, to: string, extra = "") =>
+  const inRange = async (table: string, from: string, to: string, extra = table === "users" ? "AND role = 'user'" : "") =>
     one(`SELECT COUNT(*) n, COALESCE(SUM(${table === "orders" ? "CASE WHEN status != 'Cancelled' THEN total ELSE 0 END" : "0"}),0) rev FROM ${table} WHERE ${IST} >= ? AND ${IST} < ? ${extra}`, [from, to]);
   const [oCur, oPrev, uCur, uPrev] = await Promise.all([inRange("orders", start, istDay(1)), inRange("orders", prevStart, start), inRange("users", start, istDay(1)), inRange("users", prevStart, start)]);
 
-  const [ordersDaily, usersDaily, orderStatus, userStatus, perCategory, stockRows, recent, itemRows] = await Promise.all([
+  const [ordersDaily, usersDaily, orderStatus, userStatus, perCategory, stockRows, recent, topRows] = await Promise.all([
     all(`SELECT ${IST} d, COUNT(*) n, COALESCE(SUM(CASE WHEN status != 'Cancelled' THEN total ELSE 0 END),0) rev FROM orders WHERE ${IST} >= ? GROUP BY d`, [start]),
-    all(`SELECT ${IST} d, COUNT(*) n FROM users WHERE ${IST} >= ? GROUP BY d`, [start]),
+    all(`SELECT ${IST} d, COUNT(*) n FROM users WHERE role = 'user' AND ${IST} >= ? GROUP BY d`, [start]),
     all("SELECT status, COUNT(*) n FROM orders GROUP BY status"),
-    all("SELECT status, COUNT(*) n FROM users GROUP BY status"),
+    all("SELECT status, COUNT(*) n FROM users WHERE role = 'user' GROUP BY status"),
     all("SELECT COALESCE(c.name, 'Uncategorised') name, COUNT(p.id) n FROM products p LEFT JOIN categories c ON c.id = p.category_id GROUP BY c.id ORDER BY n DESC, name LIMIT 8"),
     all("SELECT id, title, stock FROM products WHERE stock <= 5 ORDER BY stock, title LIMIT 8"),
     all("SELECT id, customer_name, total, status, created_at FROM orders ORDER BY id DESC LIMIT 5"),
-    all("SELECT items FROM orders WHERE status != 'Cancelled'"),
+    all("SELECT oi.title, SUM(oi.qty) AS units, SUM(oi.qty * oi.price) AS rev FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.status != 'Cancelled' GROUP BY COALESCE(oi.product_id, oi.title), oi.title ORDER BY units DESC LIMIT 5"),
   ]);
 
-  // Top sellers: units sold per product across all non-cancelled orders.
-  const sold = new Map<string, { units: number; rev: number }>();
-  for (const r of itemRows) {
-    try { for (const i of JSON.parse(String(r.items))) { const s = sold.get(i.title) ?? { units: 0, rev: 0 }; s.units += i.qty; s.rev += i.qty * i.price; sold.set(i.title, s); } } catch {}
-  }
-  const top = [...sold.entries()].sort((a, b) => b[1].units - a[1].units).slice(0, 5).map(([label, s]) => ({ label, value: s.units, sub: `${inr(s.rev)} revenue` }));
+  const top = topRows.map((r) => ({ label: String(r.title), value: Number(r.units), sub: `${inr(Number(r.rev))} revenue` }));
 
   const count = (rows: Record<string, unknown>[], key: string) => Number(rows.find((r) => r.status === key)?.n ?? 0);
   const oc = Number(oCur.n), op = Number(oPrev.n), rc = Number(oCur.rev), rp = Number(oPrev.rev), uc = Number(uCur.n), up = Number(uPrev.n);

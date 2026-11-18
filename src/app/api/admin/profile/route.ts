@@ -1,32 +1,28 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { isAdmin } from "@/lib/session";
-import { currentAdminUsername, ensureAdminRow } from "@/lib/adminAuth";
+import { getAdmin } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
 import { cleanProfile, firstError, validateProfile } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!(await isAdmin())) return bad("Unauthorized", 401);
+  const a = await getAdmin();
+  if (!a) return bad("Unauthorized", 401);
   const c = await db();
-  const row = (await c.execute("SELECT first_name, last_name, avatar FROM admin WHERE id = 1")).rows[0];
-  return NextResponse.json({
-    username: await currentAdminUsername(),
-    first_name: String(row?.first_name || ""),
-    last_name: String(row?.last_name || ""),
-    avatar: String(row?.avatar || ""),
-  });
+  const row = (await c.execute({ sql: "SELECT name, avatar FROM users WHERE id = ?", args: [a.id] })).rows[0];
+  return NextResponse.json({ username: a.identifier, name: String(row?.name || ""), avatar: String(row?.avatar || "") });
 }
 
 export async function PUT(req: Request) {
-  if (!(await isAdmin())) return bad("Unauthorized", 401);
+  const a = await getAdmin();
+  if (!a) return bad("Unauthorized", 401);
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
   const p = cleanProfile(b);
   const err = firstError(validateProfile(p));
   if (err) return bad(err);
-  const c = await ensureAdminRow();
-  await c.execute({ sql: "UPDATE admin SET first_name = ?, last_name = ?, avatar = ? WHERE id = 1", args: [p.first_name, p.last_name, p.avatar] });
+  const c = await db();
+  await c.execute({ sql: "UPDATE users SET name = ?, avatar = ? WHERE id = ?", args: [p.name, p.avatar, a.id] });
   return NextResponse.json({ ok: true });
 }

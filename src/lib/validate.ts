@@ -62,16 +62,14 @@ function nameErr(v: string, label: string, required: boolean): string | null {
   if (!NAME.test(v)) return `${label} can only contain letters, spaces, . ' -`;
   return null;
 }
-export const cleanProfile = (b: Record<string, unknown>) => ({ first_name: str(b.first_name), last_name: str(b.last_name), avatar: typeof b.avatar === "string" ? b.avatar : "" });
+export const cleanProfile = (b: Record<string, unknown>) => ({ name: str(b.name).replace(/\s+/g, " "), avatar: typeof b.avatar === "string" ? b.avatar : "" });
 export function validateProfile(p: ReturnType<typeof cleanProfile>): Errors {
   const e: Errors = {};
-  const f = nameErr(p.first_name, "First name", false); if (f) e.first_name = f;
-  const l = nameErr(p.last_name, "Last name", false); if (l) e.last_name = l;
-  if (!e.first_name && !e.last_name && !p.first_name && !p.last_name) e.first_name = "Enter at least a first name or a last name";
+  const n = nameErr(p.name, "Name", true);
+  if (n) e.name = n; else if (p.name.length < 2) e.name = "Name must be at least 2 characters";
   if (p.avatar && (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(p.avatar) || p.avatar.length > 300_000)) e.avatar = "Invalid or too large image";
   return e;
 }
-
 export const validateAvatar = (avatar: string): string | null =>
   avatar && (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(avatar) || avatar.length > 300_000) ? "Invalid or too large image" : null;
 

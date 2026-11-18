@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { CartItem } from "@/lib/types";
 
-type User = { id: number; identifier: string; first_name?: string; last_name?: string; avatar?: string } | null;
+type User = { id: number; identifier: string; name?: string; email?: string | null; phone?: string | null; avatar?: string } | null;
 type Ctx = {
   user: User; authReady: boolean;
   openAuth: (cb?: () => void) => void; closeAuth: () => void; authOpen: boolean;

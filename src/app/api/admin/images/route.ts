@@ -28,6 +28,6 @@ export async function POST(req: Request) {
   // Housekeeping: drop uploads older than a day that no product or past order uses (e.g. abandoned forms).
   await c.execute(`DELETE FROM product_images WHERE created_at < datetime('now','-1 day')
     AND NOT EXISTS (SELECT 1 FROM products WHERE instr(products.images, '/api/images/' || product_images.id || '"') > 0)
-    AND NOT EXISTS (SELECT 1 FROM orders WHERE instr(orders.items, '/api/images/' || product_images.id || '"') > 0)`);
+    AND NOT EXISTS (SELECT 1 FROM order_items WHERE order_items.image_url = '/api/images/' || product_images.id)`);
   return NextResponse.json({ url: `/api/images/${Number(r.lastInsertRowid)}` });
 }

@@ -5,6 +5,7 @@ import { withImages } from "@/lib/orderItems";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import { bad, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
+import { getSavedAddress, sameAddress, saveAddress } from "@/lib/addresses";
 import { cleanAddress, firstError, validateAddress, validateOrderItems } from "@/lib/validate";
 export const dynamic = "force-dynamic";
 
@@ -57,15 +58,35 @@ export async function POST(req: Request) {
     }
     reserved.push([id, qty]);
   }
+  let addressId: number | null = null;
   try {
-    const ins = await c.execute({
-      sql: `INSERT INTO orders (user_id, customer_name, phone, house_name, street_name, city, state, pincode, items, total)
-            VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      args: [user.id, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, JSON.stringify(items), total],
-    });
-    return NextResponse.json({ id: Number(ins.lastInsertRowid), total });
+    // Link the order to the customer's saved address (or save this one if they have none yet).
+    // Done BEFORE the transaction opens: the transaction holds the write lock.
+    const saved = await getSavedAddress(c, user.id);
+    addressId = saved ? (sameAddress(saved, addr) ? saved.id : null) : await saveAddress(c, user.id, addr);
   } catch {
     for (const [rid, rq] of reserved) await c.execute({ sql: "UPDATE products SET stock = stock + ? WHERE id = ?", args: [rq, rid] });
     return bad("Could not place the order. Please try again.", 500);
+  }
+
+  const tx = await c.transaction("write");
+  try {
+    const ins = await tx.execute({
+      sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total)
+            VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      args: [user.id, addressId, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total],
+    });
+    const orderId = Number(ins.lastInsertRowid);
+    await tx.batch(
+      items.map((i) => ({ sql: "INSERT INTO order_items (order_id, product_id, title, size, qty, price, image_url) VALUES (?,?,?,?,?,?,?)", args: [orderId, i.id, i.title, i.size, i.qty, i.price, i.image_url] })),
+    );
+    await tx.commit();
+    return NextResponse.json({ id: orderId, total });
+  } catch {
+    await tx.rollback().catch(() => {});
+    for (const [rid, rq] of reserved) await c.execute({ sql: "UPDATE products SET stock = stock + ? WHERE id = ?", args: [rq, rid] });
+    return bad("Could not place the order. Please try again.", 500);
+  } finally {
+    tx.close();
   }
 }

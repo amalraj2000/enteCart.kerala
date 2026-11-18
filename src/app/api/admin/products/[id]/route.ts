@@ -33,6 +33,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
   const id = parseId((await params).id);
   if (!id) return bad("Invalid product id");
   const c = await db();
+  await c.execute({ sql: "UPDATE order_items SET product_id = NULL WHERE product_id = ?", args: [id] }); // past orders keep title/price/photo
   const r = await c.execute({ sql: "DELETE FROM products WHERE id = ?", args: [id] });
   if (!r.rowsAffected) return bad("Product not found", 404);
   return NextResponse.json({ ok: true });

@@ -9,7 +9,7 @@ type Msg = { ok: boolean; text: string } | null;
 
 export default function AccountPage() {
   const [tab, setTab] = useState<"profile" | "password">("profile");
-  const [p, setP] = useState({ username: "", first_name: "", last_name: "", avatar: "" });
+  const [p, setP] = useState({ username: "", name: "", avatar: "" });
   const [pm, setPm] = useState<Msg>(null);
   const [pw, setPw] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [wm, setWm] = useState<Msg>(null);
@@ -46,7 +46,7 @@ export default function AccountPage() {
     setPw({ currentPassword: "", newPassword: "", confirmPassword: "" });
     setWm(null); toast.success("Password changed successfully");
   }
-  const initials = (p.first_name[0] || p.username[0] || "A").toUpperCase();
+  const initials = (p.name[0] || p.username[0] || "A").toUpperCase();
   const Message = ({ m }: { m: Msg }) => m && <p className={`text-sm ${m.ok ? "text-brand-700" : "text-red-600"}`}>{m.text}</p>;
 
   return (
@@ -76,11 +76,10 @@ export default function AccountPage() {
               <p className="text-xs text-gray-500">Square crop, saved at 256×256.</p>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-sm font-medium">First name<Req /><input className="input mt-1" maxLength={50} value={p.first_name} onChange={(e) => setP({ ...p, first_name: e.target.value })} /></label>
-            <label className="text-sm font-medium">Last name<Req /><input className="input mt-1" maxLength={50} value={p.last_name} onChange={(e) => setP({ ...p, last_name: e.target.value })} /></label>
-          </div>
-          <p className="text-xs text-gray-500">Login username: <b>{p.username}</b></p>
+          <label className="block text-sm font-medium">Name<Req />
+            <input className="input mt-1" maxLength={50} value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} />
+          </label>
+          <p className="text-xs text-gray-500">Login email: <b>{p.username}</b></p>
           <Message m={pm} />
           <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
         </form>
