@@ -5,12 +5,16 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Toaster from "@/components/Toaster";
 import AuthModal from "@/components/AuthModal";
+import { PwaRegister } from "@/components/Pwa";
 import ShopLoader from "@/components/ShopLoader";
 import MobileNav from "@/components/MobileNav";
 
 export const metadata: Metadata = {
   title: "enteCart.kerala — Shop local, shop Kerala",
   description: "Kerala's friendly online store. Handpicked products delivered to your doorstep.",
+  applicationName: "enteCart",
+  appleWebApp: { capable: true, title: "enteCart", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#178a49" };
@@ -25,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
           <MobileNav />
           <AuthModal />
+          <PwaRegister />
           <ShopLoader />
           <Toaster />
         </Providers>

@@ -33,7 +33,7 @@ export default function BuyPanel({ product: p }: { product: Product }) {
   const out = stock <= 0;
   const inCart = cart.filter((x) => x.id === p.id).reduce((s, x) => s + x.qty, 0); // all sizes of this product
   const room = Math.max(0, stock - inCart);        // what can still be added to the cart
-  const item = { id: p.id, title: p.title, price: p.price, image_url: p.image_url, size, qty, stock };
+  const item = { id: p.id, title: p.title, price: p.price, image_url: p.image_url, size, qty, stock, original_price: p.original_price || 0 };
 
   return (
     <div className="mt-6 space-y-5">

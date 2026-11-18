@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSettings } from "@/lib/settings";
 import FooterSwitch from "./FooterSwitch";
+import { InstallApp } from "./Pwa";
 
 const Icon = ({ d, label }: { d: string; label: string }) => (
   <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" role="img" aria-label={label}><path d={d} /></svg>
@@ -47,6 +48,7 @@ export default async function Footer() {
           <ul className="space-y-2">
             <li><Link href="/faq" className={link}>FAQ</Link></li><li><Link href="/shipping-cancellation" className={link}>Shipping &amp; cancellation</Link></li>
             <li><Link href="/about" className={link}>About us</Link></li><li><Link href="/contact" className={link}>Contact us</Link></li>
+            <li><InstallApp className={link} /></li>
           </ul>
         </nav>
         <div className="col-span-2 text-sm lg:col-span-1">
