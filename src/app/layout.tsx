@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Toaster from "@/components/Toaster";
 import AuthModal from "@/components/AuthModal";
+import ShopLoader from "@/components/ShopLoader";
 import MobileNav from "@/components/MobileNav";
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
           <MobileNav />
           <AuthModal />
+          <ShopLoader />
           <Toaster />
         </Providers>
       </body>

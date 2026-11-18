@@ -5,6 +5,8 @@ export default {
     extend: {
       keyframes: {
         "toast-up": { from: { opacity: "0", transform: "translateX(40px) scale(.95)" }, to: { opacity: "1", transform: "none" } },
+        "item-drop": { "0%": { opacity: "0", transform: "translateY(-6px) scale(.8)" }, "30%": { opacity: "1" }, "80%": { opacity: "1", transform: "translateY(26px) scale(1)" }, "100%": { opacity: "0", transform: "translateY(32px) scale(.7)" } },
+        "cart-bob": { from: { transform: "translateX(-4px) rotate(-3deg)" }, to: { transform: "translateX(6px) rotate(3deg)" } },
         "toast-bar": { from: { transform: "scaleX(1)" }, to: { transform: "scaleX(0)" } },
       },
       colors: {
