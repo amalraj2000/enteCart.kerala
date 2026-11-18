@@ -23,6 +23,7 @@ function getClient(): Client {
  *   addresses    id · user_id → users.id · full_name · phone · house_name · street_name · city · state · pincode
  *   orders       id · user_id → users.id · address_id → addresses.id · (shipping snapshot) · total · status
  *   order_items  id · order_id → orders.id · product_id → products.id · title · size · qty · price · image_url
+ *   payments     id · order_id → orders.id · razorpay_order_id · razorpay_payment_id · amount · status · method · refund_id (online orders only)
  * Orders keep a snapshot of the shipping address and of each item's title/price, so history stays correct
  * even if the customer edits their address or the product is changed or deleted later.
  */
@@ -113,6 +114,22 @@ const BASE_SCHEMA = [
     data TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // Online payments (Razorpay): one row per payment attempt. Only ids / amount / method — NEVER card numbers, CVV or expiry.
+  `CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    razorpay_order_id TEXT NOT NULL UNIQUE,
+    razorpay_payment_id TEXT NOT NULL DEFAULT '',
+    amount REAL NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'Created', -- Created (attempt started) | Paid | Refunded
+    method TEXT NOT NULL DEFAULT '', -- upi | card | netbanking | wallet …
+    method_detail TEXT NOT NULL DEFAULT '', -- e.g. "visa ····0153" or the bank name
+    refund_id TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    paid_at TEXT,
+    refunded_at TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id)`,
   `CREATE TABLE IF NOT EXISTS rate_limits (
     key TEXT PRIMARY KEY,
     count INTEGER NOT NULL,
@@ -262,6 +279,11 @@ export function db(): Promise<Client> {
       await c.execute("ALTER TABLE users ADD COLUMN vendor_name TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists
       await c.execute("ALTER TABLE categories ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE banners ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
+      // Online payment (Razorpay). Old rows are all Cash on Delivery.
+      await c.execute("ALTER TABLE orders ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'cod'").catch(() => {}); // already exists
+      await c.execute("ALTER TABLE orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'Pending'").catch(() => {}); // already exists: Pending (COD) | Unpaid | Paid
+      await c.execute("ALTER TABLE orders ADD COLUMN razorpay_order_id TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists
+      await c.execute("ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists
       await c.execute("ALTER TABLE products ADD COLUMN created_at TEXT").catch(() => {}); // already exists (SQLite can't add a non-constant default)
       await c.execute("UPDATE products SET created_at = datetime('now') WHERE created_at IS NULL"); // existing products count as "added today" once
 

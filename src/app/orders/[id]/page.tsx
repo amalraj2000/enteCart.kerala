@@ -3,6 +3,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { useApp } from "@/components/Providers";
 import OrderDetail from "@/components/OrderDetail";
+import PayNow from "@/components/PayNow";
 import InfoTip from "@/components/InfoTip";
 import { toast } from "@/components/Toaster";
 import { CANCEL_POLICY, canCancel } from "@/lib/orderPolicy";
@@ -17,12 +18,15 @@ export default function MyOrderPage({ params }: { params: Promise<{ id: string }
   useEffect(() => { if (user) load(); }, [user, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function cancel() {
-    if (!confirm("Cancel this order? This can't be undone.")) return;
+    if (!confirm(paidOnline ? "Cancel this order? Your payment will be refunded to your original payment method in 5–7 working days. This can't be undone." : "Cancel this order? This can't be undone.")) return;
     setBusy(true);
     const r = await fetch(`/api/orders/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "cancel" }) });
     setBusy(false);
-    if (r.ok) toast.success("Your order has been cancelled");
-    else toast.error((await r.json().catch(() => ({}))).error || "Could not cancel the order");
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) toast.error(d.error || "Could not cancel the order");
+    else if (d.refund === "done") toast.success("Order cancelled. Refund started — it reaches you in 5–7 working days");
+    else if (d.refund === "pending") toast.success("Order cancelled. We'll process your refund shortly");
+    else toast.success("Your order has been cancelled");
     load(); // shows the real status either way (e.g. it was confirmed a moment ago)
   }
 
@@ -31,7 +35,10 @@ export default function MyOrderPage({ params }: { params: Promise<{ id: string }
   if (o === undefined) return <p>Loading…</p>;
   if (o === null) return <p className="card p-8 text-center text-gray-600">Order not found.</p>;
 
-  const actions = canCancel(o.status) ? (
+  const online = o.payment_method === "online";
+  const paidOnline = online && o.payment_status === "Paid";
+  const cancellable = canCancel(o.status);
+  const actions = cancellable ? (
     <div className="flex items-center gap-2">
       <button className="btn-danger" onClick={cancel} disabled={busy}>{busy ? "Cancelling…" : "Cancel order"}</button>
       <InfoTip title="Cancellation policy" lines={CANCEL_POLICY} />
@@ -42,8 +49,9 @@ export default function MyOrderPage({ params }: { params: Promise<{ id: string }
   return (
     <div className="space-y-4">
       <Link href="/orders" className="text-sm font-medium text-brand-700 hover:underline">← Back to my orders</Link>
+      {online && o.payment_status === "Unpaid" && o.status !== "Cancelled" && <PayNow orderId={o.id} onDone={load} />}
       <OrderDetail o={o} actions={actions} />
-      {canCancel(o.status) && <p className="text-xs text-gray-500">You can cancel this order only while it is “Placed”. Once it is confirmed, it can’t be cancelled and returns are not available.</p>}
+      {cancellable && <p className="text-xs text-gray-500">You can cancel this order only while it is “Placed”. Once it is confirmed, it can’t be cancelled and returns are not available.</p>}
     </div>
   );
 }

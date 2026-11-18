@@ -2,6 +2,7 @@ import Link from "next/link";
 import Img from "./Img";
 import { inr } from "@/lib/types";
 import { statusColor } from "./OrderList";
+import { payLabel } from "@/lib/payLabel";
 import type { FullOrder } from "@/lib/orderItems";
 
 /** Compact order summary: photo, name, status, total and a View button. */
@@ -18,6 +19,7 @@ export default function OrderRow({ o, href, extra, statusControl }: { o: FullOrd
       <div className="min-w-0 flex-1 basis-48">
         <p className="truncate font-semibold">{first?.title || "Order"}{more > 0 && <span className="font-normal text-gray-500"> and {more} more</span>}</p>
         <p className="text-sm text-gray-500">Order #{o.id} · {o.created_at}</p>
+        <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${payLabel(o).tone}`}>{o.payment_method === "online" ? "💳 " : "💵 "}{payLabel(o).text}</span>
         {extra}
         {owners.length > 0 && <p className="text-xs text-gray-500">🛍️ Products by <span className="font-medium text-gray-700">{owners.join(", ")}</span></p>}
       </div>

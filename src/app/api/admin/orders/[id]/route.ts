@@ -16,12 +16,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const next = b.status as string;
   const c = await db();
 
-  const cur = (await c.execute({ sql: "SELECT status FROM orders WHERE id = ?", args: [id] })).rows[0];
+  const cur = (await c.execute({ sql: "SELECT status, payment_status, payment_method FROM orders WHERE id = ?", args: [id] })).rows[0];
   if (!cur) return bad("Order not found", 404);
   if (!(await editableOrderIds(c, me, [id])).has(id)) return bad("You can only update orders that include products you added", 403);
   const prev = String(cur.status);
   if (prev === next) return NextResponse.json({ ok: true });
 
+  if (cur.payment_status === "Refunded" && next !== "Cancelled") return bad("This order was refunded, so it can't be re-opened.", 409);
+  if (cur.payment_method === "online" && cur.payment_status === "Unpaid" && next !== "Placed" && next !== "Cancelled") return bad("This online order hasn't been paid yet, so it can't be confirmed or shipped.", 409);
   // Re-opening a cancelled order takes its items out of stock again — refuse if there isn't enough.
   if (prev === "Cancelled" && !(await reserveOrder(c, id))) return bad("Not enough stock to re-open this cancelled order.", 409);
 

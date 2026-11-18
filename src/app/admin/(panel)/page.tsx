@@ -76,15 +76,15 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   if (!scoped) {
     [users, products, orders, revenue, outOfStock, lowStock, pending] = await Promise.all([
       one("SELECT COUNT(*) n FROM users WHERE role = 'user'"), one("SELECT COUNT(*) n FROM products"), one("SELECT COUNT(*) n FROM orders"),
-      one("SELECT COALESCE(SUM(total),0) n FROM orders WHERE status != 'Cancelled'"),
+      one("SELECT COALESCE(SUM(total),0) n FROM orders WHERE status != 'Cancelled' AND payment_status NOT IN ('Unpaid','Refunded')"),
       one("SELECT COUNT(*) n FROM products WHERE stock = 0"), one("SELECT COUNT(*) n FROM products WHERE stock BETWEEN 1 AND 5"),
       one("SELECT COUNT(*) n FROM orders WHERE status IN ('Placed','Confirmed')"),
     ]);
     const inRange = async (table: string, from: string, to: string, extra = table === "users" ? "AND role = 'user'" : "") =>
-      one(`SELECT COUNT(*) n, COALESCE(SUM(${table === "orders" ? "CASE WHEN status != 'Cancelled' THEN total ELSE 0 END" : "0"}),0) rev FROM ${table} WHERE ${IST} >= ? AND ${IST} < ? ${extra}`, [from, to]);
+      one(`SELECT COUNT(*) n, COALESCE(SUM(${table === "orders" ? "CASE WHEN status != 'Cancelled' AND payment_status NOT IN ('Unpaid','Refunded') THEN total ELSE 0 END" : "0"}),0) rev FROM ${table} WHERE ${IST} >= ? AND ${IST} < ? ${extra}`, [from, to]);
     [oCur, oPrev, uCur, uPrev] = await Promise.all([inRange("orders", start, istDay(1)), inRange("orders", prevStart, start), inRange("users", start, istDay(1)), inRange("users", prevStart, start)]);
     [ordersDaily, usersDaily, orderStatus, userStatus, perCategory, stockRows, recent, topRows, adminRows] = await Promise.all([
-      all(`SELECT ${IST} d, COUNT(*) n, COALESCE(SUM(CASE WHEN status != 'Cancelled' THEN total ELSE 0 END),0) rev FROM orders WHERE ${IST} >= ? GROUP BY d`, [start]),
+      all(`SELECT ${IST} d, COUNT(*) n, COALESCE(SUM(CASE WHEN status != 'Cancelled' AND payment_status NOT IN ('Unpaid','Refunded') THEN total ELSE 0 END),0) rev FROM orders WHERE ${IST} >= ? GROUP BY d`, [start]),
       all(`SELECT ${IST} d, COUNT(*) n FROM users WHERE role = 'user' AND ${IST} >= ? GROUP BY d`, [start]),
       all("SELECT status, COUNT(*) n FROM orders GROUP BY status"),
       all("SELECT status, COUNT(*) n FROM users WHERE role = 'user' GROUP BY status"),

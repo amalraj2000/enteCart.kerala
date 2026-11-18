@@ -1,6 +1,7 @@
 import Img from "./Img";
 import { inr } from "@/lib/types";
 import { statusColor } from "./OrderList";
+import { payLabel } from "@/lib/payLabel";
 import type { FullOrder } from "@/lib/orderItems";
 
 const STEPS = ["Placed", "Confirmed", "Shipped", "Delivered"];
@@ -8,6 +9,7 @@ const STEPS = ["Placed", "Confirmed", "Shipped", "Delivered"];
 /** Full order view (no hooks, so usable from server and client components). `actions` renders in the header (e.g. status control). */
 export default function OrderDetail({ o, admin, actions }: { o: FullOrder; admin?: boolean; actions?: React.ReactNode }) {
   const cancelled = o.status === "Cancelled";
+  const online = o.payment_method === "online";
   const step = STEPS.indexOf(o.status);
   const count = o.items.reduce((s, i) => s + i.qty, 0);
   return (
@@ -72,9 +74,13 @@ export default function OrderDetail({ o, admin, actions }: { o: FullOrder; admin
           <div className="space-y-1 text-sm">
             <div className="flex justify-between"><span className="text-gray-500">Items ({count})</span><span>{inr(o.total)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Delivery</span><span className="text-brand-700">Free</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Payment method</span><span>Cash on Delivery</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Payment method</span><span>{online ? "Online (Razorpay)" : "Cash on Delivery"}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Payment status</span><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${payLabel(o).tone}`}>{payLabel(o).text}</span></div>
+            {online && o.razorpay_payment_id && <div className="flex justify-between gap-3"><span className="text-gray-500">Transaction ID</span><span className="break-all font-mono text-xs">{o.razorpay_payment_id}</span></div>}
             <hr className="my-2" />
-            <div className="flex justify-between text-base font-bold"><span>Total to pay</span><span className="text-brand-700">{inr(o.total)}</span></div>
+            <div className="flex justify-between text-base font-bold"><span>{online ? (o.payment_status === "Paid" ? "Total paid" : o.payment_status === "Refunded" ? "Total refunded" : "Total") : "Total to pay"}</span><span className="text-brand-700">{inr(o.total)}</span></div>
+            {online && o.status === "Cancelled" && o.payment_status === "Paid" && <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-800">{admin ? "Cancelled but paid — refund it from Admin → Payments." : "This order was cancelled. Your refund is being processed to your original payment method."}</p>}
+            {online && o.payment_status === "Refunded" && <p className="mt-2 rounded bg-blue-50 p-2 text-xs text-blue-800">Refund issued to the original payment method (usually 5–7 working days to show up).</p>}
           </div>
         </section>
       </div>

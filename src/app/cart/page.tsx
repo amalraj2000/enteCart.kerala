@@ -51,7 +51,7 @@ export default function CartPage() {
       <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-4 border-t border-gray-200 bg-white/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur md:card md:static md:z-auto md:block md:h-fit md:space-y-3 md:border md:p-5 md:backdrop-blur-none">
         <h2 className="hidden font-bold md:block">Order Summary</h2>
         <div className="md:flex md:justify-between"><span className="block text-xs text-gray-500 md:inline md:text-base md:text-gray-900">Total</span><span className="text-xl font-extrabold text-brand-700">{inr(cartTotal)}</span></div>
-        <p className="hidden text-xs text-gray-500 md:block">Payment: Cash on Delivery</p>
+        <p className="hidden text-xs text-gray-500 md:block">Pay online (UPI, cards, netbanking) or Cash on Delivery</p>
         {problems.length > 0 && <p className="hidden text-xs font-medium text-red-600 md:block">{problems[0]}</p>}
         <button className="btn-primary flex-1 md:w-full md:flex-none" disabled={problems.length > 0} title={problems[0]} onClick={() => (user ? go() : openAuth(go))}>{problems.length ? "Fix cart to continue" : "Proceed to Checkout"}</button>
       </div>

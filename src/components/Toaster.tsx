@@ -18,26 +18,22 @@ export default function Toaster() {
       const { type, text } = (e as CustomEvent).detail;
       const id = ++n;
       setItems((l) => [...l, { id, type, text }]);
-      setTimeout(() => setItems((l) => l.filter((x) => x.id !== id)), 3500);
+      setTimeout(() => setItems((l) => l.filter((x) => x.id !== id)), 3000);
     };
     window.addEventListener(EVT, on);
     return () => window.removeEventListener(EVT, on);
   }, []);
 
   return (
-    <div className="pointer-events-none fixed right-0 top-4 z-[100] flex w-full max-w-md flex-col items-end gap-3 px-4" aria-live="polite">
+    <div className="pointer-events-none fixed right-0 top-3 z-[100] flex w-full max-w-xs flex-col items-end gap-2 px-3" aria-live="polite">
       {items.map((t) => {
         const ok = t.type === "success";
         return (
           <div key={t.id} role="status" onClick={() => setItems((l) => l.filter((x) => x.id !== t.id))}
-            className={`pointer-events-auto relative flex w-full max-w-md animate-[toast-up_.3s_cubic-bezier(.2,.9,.3,1.2)] cursor-pointer items-center gap-3 overflow-hidden rounded-2xl px-5 py-4 text-white shadow-2xl ${ok ? "bg-brand-800" : "bg-red-700"}`}>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg">{ok ? "🎉" : "⚠️"}</span>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-wider text-white/70">{ok ? "Success" : "Error"}</p>
-              <p className="text-sm font-medium leading-snug">{t.text}</p>
-            </div>
-            <span className="text-xl leading-none text-white/60">×</span>
-            <span className="absolute bottom-0 left-0 h-1 w-full origin-left bg-white/50 animate-[toast-bar_3.5s_linear_forwards]" />
+            className={`pointer-events-auto relative flex w-fit max-w-full animate-[toast-up_.25s_ease-out] cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-3 py-2 text-white shadow-lg ${ok ? "bg-brand-800" : "bg-red-700"}`}>
+            <span className="shrink-0 text-sm" aria-hidden>{ok ? "✓" : "⚠️"}</span>
+            <p className="min-w-0 text-xs font-medium leading-snug">{t.text}</p>
+            <span className="absolute bottom-0 left-0 h-0.5 w-full origin-left bg-white/50 animate-[toast-bar_3s_linear_forwards]" />
           </div>
         );
       })}

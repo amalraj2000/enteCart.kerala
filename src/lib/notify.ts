@@ -6,7 +6,7 @@ import { inr } from "./types";
  * Needs ADMIN_WHATSAPP (the owner's number) and CALLMEBOT_API_KEY; does nothing if either is missing.
  * Only the order number, total and item count are sent — never the customer's name, phone or address.
  */
-export async function notifyNewOrder(o: { id: number; total: number; itemCount: number; adminUrl: string }) {
+export async function notifyNewOrder(o: { id: number; total: number; itemCount: number; adminUrl?: string; paidOnline?: boolean }) {
   const phone = process.env.ADMIN_WHATSAPP, key = process.env.CALLMEBOT_API_KEY;
   if (!phone || !key) return;
   const digits = phone.replace(/\D/g, "");
@@ -14,7 +14,7 @@ export async function notifyNewOrder(o: { id: number; total: number; itemCount: 
 
   const url = new URL(process.env.WHATSAPP_API_URL || "https://api.callmebot.com/whatsapp.php");
   url.searchParams.set("phone", `+${to}`);
-  url.searchParams.set("text", `🛒 New order received!\nOrder #${o.id} • ${inr(o.total)} • ${o.itemCount} item${o.itemCount === 1 ? "" : "s"}\n${o.adminUrl}`);
+  url.searchParams.set("text", `🛒 New order received!${o.paidOnline ? " (💳 PAID ONLINE)" : ""}\nOrder #${o.id} • ${inr(o.total)} • ${o.itemCount} item${o.itemCount === 1 ? "" : "s"}${o.adminUrl ? `\n${o.adminUrl}` : ""}`);
   url.searchParams.set("apikey", key);
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });

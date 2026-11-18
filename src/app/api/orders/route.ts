@@ -5,6 +5,8 @@ import { getUser } from "@/lib/session";
 import { withImages } from "@/lib/orderItems";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import { bad, readJson } from "@/lib/http";
+import { expireUnpaidOrders } from "@/lib/expireUnpaid";
+import { razorpayConfigured } from "@/lib/razorpay";
 import { rateLimit } from "@/lib/rateLimit";
 import { getSavedAddress, sameAddress, saveAddress } from "@/lib/addresses";
 import { cleanAddress, firstError, validateAddress, validateOrderItems } from "@/lib/validate";
@@ -14,6 +16,7 @@ export async function GET(req: Request) {
   const user = await getUser();
   if (!user) return bad("Login required", 401);
   const c = await db();
+  await expireUnpaidOrders(c);
   const total = Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ?", args: [user.id] })).rows[0].n);
   const pi = pageInfo(total, parsePage(new URL(req.url).searchParams.get("page")));
   const r = await c.execute({ sql: `SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT ${PAGE_SIZE} OFFSET ?`, args: [user.id, pi.offset] });
@@ -26,6 +29,8 @@ export async function POST(req: Request) {
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
 
+  const online = b.payment_method === "online";
+  if (online && !razorpayConfigured()) return bad("Online payment is not available right now. Please choose Cash on Delivery.", 503);
   const addr = cleanAddress(b);
   const aerr = firstError(validateAddress(addr));
   if (aerr) return bad(aerr);
@@ -34,6 +39,7 @@ export async function POST(req: Request) {
   if (!(await rateLimit(`order:${user.id}`, 10, 600))) return bad("Too many orders in a short time. Please wait a few minutes.", 429);
 
   const c = await db();
+  await expireUnpaidOrders(c); // give back stock held by abandoned online payments before we check availability
   // Prices, titles, sizes and stock always come from the DB — never from the browser.
   const items: { id: number; title: string; price: number; size: string; qty: number; image_url: string }[] = [];
   const need = new Map<number, number>();
@@ -73,9 +79,9 @@ export async function POST(req: Request) {
   const tx = await c.transaction("write");
   try {
     const ins = await tx.execute({
-      sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total)
-            VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      args: [user.id, addressId, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total],
+      sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total, payment_method, payment_status)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [user.id, addressId, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total, online ? "online" : "cod", online ? "Unpaid" : "Pending"],
     });
     const orderId = Number(ins.lastInsertRowid);
     await tx.batch(
@@ -83,7 +89,8 @@ export async function POST(req: Request) {
     );
     await tx.commit();
     // Runs after the response is sent (Vercel keeps the function alive for it); a failure here never affects the order.
-    after(() => notifyNewOrder({ id: orderId, total, itemCount: items.reduce((n, i) => n + i.qty, 0), adminUrl: `${new URL(req.url).origin}/admin/orders/${orderId}` }));
+    // Online orders are announced only once the payment succeeds (see markPaid); COD orders right away.
+    if (!online) after(() => notifyNewOrder({ id: orderId, total, itemCount: items.reduce((n, i) => n + i.qty, 0), adminUrl: `${new URL(req.url).origin}/admin/orders/${orderId}` }));
     return NextResponse.json({ id: orderId, total });
   } catch {
     await tx.rollback().catch(() => {});
