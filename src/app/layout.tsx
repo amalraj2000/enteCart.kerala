@@ -8,10 +8,14 @@ import AuthModal from "@/components/AuthModal";
 import { PwaRegister } from "@/components/Pwa";
 import ShopLoader from "@/components/ShopLoader";
 import MobileNav from "@/components/MobileNav";
+import { SITE_NAME, siteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: "enteCart.kerala — Shop local, shop Kerala",
   description: "Kerala's friendly online store. Handpicked products delivered to your doorstep.",
+  openGraph: { type: "website", siteName: SITE_NAME, locale: "en_IN", title: "enteCart.kerala — Shop local, shop Kerala", description: "Kerala's friendly online store. Handpicked products delivered to your doorstep.", images: [{ url: "/logo.png" }] },
+  twitter: { card: "summary_large_image" },
   applicationName: "enteCart",
   appleWebApp: { capable: true, title: "enteCart", statusBarStyle: "default" },
   formatDetection: { telephone: false },

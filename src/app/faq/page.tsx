@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import InfoPage from "@/components/InfoPage";
-export const metadata: Metadata = { title: "FAQ — enteCart.kerala" };
+export const metadata: Metadata = { title: "FAQ — enteCart.kerala", description: "Answers about ordering, Cash on Delivery, online payment, delivery, cancellation and returns at enteCart.kerala.", alternates: { canonical: "/faq" } };
 
 const FAQ: [string, string][] = [
   ["How do I place an order?", "Add products to your cart (or tap Buy Now), log in or register with your phone number or Gmail, enter your delivery address and place the order. You’ll see a confirmation straight away."],

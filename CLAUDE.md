@@ -17,6 +17,9 @@ Kerala e-commerce shop. **Next.js 15 App Router + React 19 + TypeScript + Tailwi
 - Product edit sends `stock_base`; server applies the stock *delta*, not an overwrite.
 - `POST /api/payments/webhook` (HMAC, `RAZORPAY_WEBHOOK_SECRET`) records captured payments; CSP is Report-Only until verified clean.
 
+## SEO
+`lib/site.ts` (`siteUrl()` from `SITE_URL`, `snippet`, `jsonLd`), `app/robots.ts`, `app/sitemap.ts` (visible products + active categories + info pages), per-product `generateMetadata` + Product JSON-LD, category/search metadata on `/`, Organization/WebSite JSON-LD on home. Private pages get `X-Robots-Tag: noindex` via `next.config.mjs`. Set `SITE_URL` in production.
+
 ## Customer features (pages in `src/app`)
 - `/` home: banner slider, category chips, search (`?q`, `?cat`), New Arrivals (14 days) & Best Sellers (≥3 units) sections (toggle in settings), product grid + pagination. Data via `lib/catalog.ts` (`unstable_cache`, 60s, tag `catalog`; `revalidateCatalog()` after admin edits, `revalidateCatalogSoon()` after orders).
 - `/product/[id]`: gallery (up to 8 photos), sizes, discount % (from `original_price`), stock, BuyPanel (add to cart / buy now), wishlist button, "Sold by".

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import InfoPage from "@/components/InfoPage";
-export const metadata: Metadata = { title: "Shipping & cancellation — enteCart.kerala" };
+export const metadata: Metadata = { title: "Shipping & cancellation — enteCart.kerala", description: "Delivery times, order cancellation and return policy at enteCart.kerala.", alternates: { canonical: "/shipping-cancellation" } };
 
 export default function ShippingCancellation() {
   return (

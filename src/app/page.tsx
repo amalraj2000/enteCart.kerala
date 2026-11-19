@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_NAME, jsonLd, siteUrl } from "@/lib/site";
 import { getHomeData } from "@/lib/catalog";
 import type { Category } from "@/lib/types";
 import { parseId } from "@/lib/validate";
@@ -21,6 +23,18 @@ function Row({ title, hint, products }: { title: string; hint?: string; products
   );
 }
 
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ q?: string; category?: string }> }): Promise<Metadata> {
+  const { q, category } = await searchParams;
+  const catId = parseId(category);
+  // Search result pages are endless and thin — keep them out of Google. Category pages are real landing pages: index them.
+  if (typeof q === "string" && q.trim()) return { title: `Search: ${q.trim().slice(0, 60)} — ${SITE_NAME}`, robots: { index: false, follow: true }, alternates: { canonical: "/" } };
+  if (catId) {
+    const cat = (await getHomeData("", catId)).cats.find((x) => Number(x.id) === catId);
+    if (cat) return { title: `${cat.name} — Buy online in Kerala | ${SITE_NAME}`, description: `Shop ${cat.name} online at ${SITE_NAME}. Cash on Delivery and online payment, delivered across Kerala.`, alternates: { canonical: `/?category=${catId}` } };
+  }
+  return { alternates: { canonical: "/" } };
+}
+
 export default async function Home({ searchParams }: { searchParams: Promise<{ q?: string; category?: string }> }) {
   const { q: rawQ, category: rawCat } = await searchParams;
   const q = typeof rawQ === "string" ? rawQ.trim().slice(0, 100) : "";
@@ -31,8 +45,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
 
   const chip = (id: number | null) => `/?${new URLSearchParams({ ...(q ? { q } : {}), ...(id ? { category: String(id) } : {}) }).toString()}`;
 
+  const siteLd = { "@context": "https://schema.org", "@graph": [
+    { "@type": "Organization", name: SITE_NAME, url: siteUrl(), logo: `${siteUrl()}/logo.png` },
+    { "@type": "WebSite", name: SITE_NAME, url: siteUrl(), potentialAction: { "@type": "SearchAction", target: `${siteUrl()}/?q={search_term_string}`, "query-input": "required name=search_term_string" } },
+  ] };
   return (
     <div>
+      {!filtered && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteLd) }} />}
       {!filtered && (banners.length
         ? <BannerSlider banners={banners} />
         : (

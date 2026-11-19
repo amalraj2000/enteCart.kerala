@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import InfoPage from "@/components/InfoPage";
 import { getSettings } from "@/lib/settings";
-export const metadata: Metadata = { title: "Contact us — enteCart.kerala" };
+export const metadata: Metadata = { title: "Contact us — enteCart.kerala", description: "Contact enteCart.kerala by phone, WhatsApp or email for help with your order.", alternates: { canonical: "/contact" } };
 export const dynamic = "force-dynamic";
 
 export default async function Contact() {

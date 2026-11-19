@@ -16,12 +16,16 @@ const sw = [
   { key: "Content-Type", value: "application/javascript; charset=utf-8" },
 ];
 
+// Private / transactional pages must never appear in Google (the page code for several of them is client-side, so this is done with a header).
+const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+const PRIVATE = ["/admin/:path*", "/cart", "/checkout", "/orders/:path*", "/orders", "/order-success/:path*", "/account", "/wishlist", "/offline", "/api/:path((?!images/).*)"];
+
 /** @type {import('next').NextConfig} */
 export default {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   reactStrictMode: true,
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: security }, { source: "/sw.js", headers: sw }];
+    return [{ source: "/:path*", headers: security }, { source: "/sw.js", headers: sw }, ...PRIVATE.map((source) => ({ source, headers: noindex }))];
   },
 };

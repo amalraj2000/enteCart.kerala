@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SHOP_VENDOR } from "@/lib/staffLabel";
@@ -6,14 +7,48 @@ import { discountPct, inr, productImages, type Product } from "@/lib/types";
 import Gallery from "@/components/Gallery";
 import WishlistButton from "@/components/WishlistButton";
 import BuyPanel from "@/components/BuyPanel";
+import { SITE_NAME, jsonLd, siteUrl, snippet } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
+
+const photo = (u: string) => (/^\/api\/images\/\d+$/.test(u) ? `${u}?w=1000` : u);
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const p = (await getProduct(Number(id) || 0)) as unknown as (Product & { category_name?: string | null }) | null;
+  if (!p) return { title: "Product not found", robots: { index: false, follow: false } };
+  const off = discountPct(p.price, p.original_price);
+  const title = `${p.title} — ${inr(p.price)}${p.category_name ? ` | ${p.category_name}` : ""} — ${SITE_NAME}`;
+  const description = snippet(`${p.title} for ${inr(p.price)}${off ? ` (${off}% off)` : ""}${p.category_name ? ` in ${p.category_name}` : ""}. ${p.description || ""} Cash on Delivery & online payment. Delivered across Kerala.`);
+  const imgs = productImages(p).slice(0, 4).map((u) => ({ url: photo(u) }));
+  return {
+    title: { absolute: title }, description,
+    alternates: { canonical: `/product/${p.id}` },
+    openGraph: { type: "website", siteName: SITE_NAME, locale: "en_IN", title: p.title, description, url: `/product/${p.id}`, images: imgs },
+    twitter: { card: "summary_large_image", title: p.title, description, images: imgs.map((i) => i.url) },
+  };
+}
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const p = (await getProduct(Number(id) || 0)) as unknown as (Product & { category_name?: string | null }) | null; // cached — see lib/catalog.ts
   if (!p) notFound();
-  return (
+  const base = siteUrl();
+  const abs = (u: string) => (u.startsWith("/") ? base + u : u);
+  const ld = {
+    "@context": "https://schema.org", "@type": "Product",
+    name: p.title, description: snippet(p.description || p.title, 500), sku: String(p.id),
+    image: productImages(p).map((u) => abs(photo(u))),
+    ...(p.category_name ? { category: p.category_name } : {}),
+    brand: { "@type": "Brand", name: SITE_NAME },
+    offers: {
+      "@type": "Offer", url: `${base}/product/${p.id}`, priceCurrency: "INR", price: Number(p.price).toFixed(2),
+      availability: Number(p.stock) > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock", itemCondition: "https://schema.org/NewCondition",
+      seller: { "@type": "Organization", name: SITE_NAME },
+    },
+  };
+  return (<>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
     <div className="card grid grid-cols-1 gap-8 p-4 md:grid-cols-2 md:p-8">
       <Gallery images={productImages(p)} alt={p.title} />
       <div className="min-w-0">
@@ -35,5 +70,5 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         <BuyPanel product={p} />
       </div>
     </div>
-  );
+  </>);
 }

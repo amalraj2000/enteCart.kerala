@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import InfoPage from "@/components/InfoPage";
 import { getSettings } from "@/lib/settings";
-export const metadata: Metadata = { title: "About us — enteCart.kerala" };
+export const metadata: Metadata = { title: "About us — enteCart.kerala", description: "Learn about enteCart.kerala — Kerala's friendly online store with handpicked products delivered to your doorstep.", alternates: { canonical: "/about" } };
 export const dynamic = "force-dynamic";
 
 export default async function About() {
