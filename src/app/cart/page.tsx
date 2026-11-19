@@ -33,7 +33,7 @@ export default function CartPage() {
             <div className="min-w-0 flex-1">
               <Link href={`/product/${i.id}`} className="font-medium hover:underline">{i.title}</Link>
               {i.size && <p className="text-xs text-gray-500">Size: {i.size}</p>}
-              {i.stock <= 0 && <p className="text-xs font-semibold text-red-600">Out of stock — remove it to continue</p>}
+              {i.stock <= 0 && <p className="text-xs font-semibold text-red-600">{i.gone ? "No longer available" : "Out of stock"} — remove it to continue</p>}
               {i.stock > 0 && i.stock < 10 && <p className="text-xs font-medium text-amber-600">Only {i.stock} left</p>}
               <p className="font-bold text-brand-700">{inr(i.price)}</p>
               <div className="mt-2 flex items-center gap-2">

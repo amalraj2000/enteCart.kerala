@@ -10,7 +10,7 @@ export type Product = {
   stock: number; sizes: string; image_url: string;
   original_price?: number; // MRP / original price (0 = none); `price` is the selling price
 };
-export type CartItem = { id: number; title: string; price: number; image_url: string; size: string; qty: number; stock: number; original_price?: number };
+export type CartItem = { id: number; title: string; price: number; image_url: string; size: string; qty: number; stock: number; original_price?: number; gone?: boolean };
 export const ORDER_STATUSES = ["Placed", "Confirmed", "Shipped", "Delivered", "Cancelled"];
 /** Discount % between the original (MRP) and selling price, rounded; 0 when there is no real discount. Always calculated, never stored. */
 export const discountPct = (price: number, original?: number | null) => {

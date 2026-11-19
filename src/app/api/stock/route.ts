@@ -12,10 +12,13 @@ export async function GET(req: Request) {
   if (!ids.length) return bad("No product ids");
   if (ids.length > 50) return bad("Too many products");
   const c = await db();
-  const r = await c.execute({ sql: `SELECT p.id, CASE WHEN ${VISIBLE} THEN p.stock ELSE 0 END AS stock FROM products p ${CATEGORY_JOIN} WHERE p.id IN (${ids.map(() => "?").join(",")})`, args: ids });
+  const r = await c.execute({ sql: `SELECT p.id, CASE WHEN ${VISIBLE} THEN p.stock ELSE 0 END AS stock, CASE WHEN ${VISIBLE} THEN 0 ELSE 1 END AS gone FROM products p ${CATEGORY_JOIN} WHERE p.id IN (${ids.map(() => "?").join(",")})`, args: ids });
   const stock: Record<string, number> = Object.fromEntries(ids.map((i) => [String(i), 0])); // a deleted product counts as 0
   for (const row of r.rows) stock[String(row.id)] = Number(row.stock);
+  // Deleted products are missing from the result; inactive / hidden-category ones are flagged. Both can't be ordered.
+  const found = new Set(r.rows.map((x) => Number(x.id)));
+  const gone = ids.filter((i) => !found.has(i) || r.rows.some((x) => Number(x.id) === i && Number(x.gone) === 1));
   // Shared by every visitor for a few seconds: a thousand people watching the same product cost one database read, not a thousand.
   // Display only — the order API always checks live stock.
-  return NextResponse.json({ stock }, { headers: { "Cache-Control": "public, s-maxage=5, stale-while-revalidate=15" } });
+  return NextResponse.json({ stock, gone }, { headers: { "Cache-Control": "public, s-maxage=5, stale-while-revalidate=15" } });
 }

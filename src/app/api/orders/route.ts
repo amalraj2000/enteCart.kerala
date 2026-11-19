@@ -80,7 +80,10 @@ export async function POST(req: Request) {
   let total = 0;
   for (const l of lines) {
     const p = byId.get(l.id);
-    if (!p) return bad("A product in your cart is no longer available");
+    if (!p) {
+      const t = (await c.execute({ sql: "SELECT title FROM products WHERE id = ?", args: [l.id] })).rows[0];
+      return bad(t ? `“${t.title}” is no longer available. Please remove it from your cart.` : "A product in your cart was removed from the shop. Please remove it from your cart.", 409);
+    }
     const sizes = String(p.sizes).split(",").map((s) => s.trim()).filter(Boolean);
     if (sizes.length ? !sizes.includes(l.size) : l.size !== "") return bad(`Please choose a valid size for "${p.title}"`);
     items.push({ id: l.id, title: String(p.title), price: Number(p.price), size: l.size, qty: l.qty, image_url: String(p.image_url || "") });

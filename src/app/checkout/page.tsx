@@ -49,6 +49,7 @@ function Checkout() {
   const placing = useRef(false);
   const [method, setMethod] = useState<"cod" | "online">("cod");
   const [loaded, setLoaded] = useState(false);
+  const [stockOk, setStockOk] = useState<boolean | null>(null); // null = still checking live stock, false = couldn't check
   const [onlineOk, setOnlineOk] = useState(false); // owner's switch (Admin → Payments) + Razorpay configured
   useEffect(() => { fetch("/api/payments/status", { cache: "no-store" }).then((r) => r.json()).then((d) => { setOnlineOk(!!d.online); if (!d.online) setMethod("cod"); }).catch(() => {}); }, []);
 
@@ -69,7 +70,19 @@ function Checkout() {
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Once the saved address has loaded: if it's incomplete (new customer), open the address form straight away.
   useEffect(() => { if (loaded) setEditAddr(!!firstError(validateAddress(cleanAddress(form)))); }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { syncStock(); }, []); // eslint-disable-line react-hooks/exhaustive-deps — re-check live stock when checkout opens
+  // Page refreshed / reopened while an online payment was in progress: the order already exists (unpaid), so go to it
+  // (its page has "Pay now") instead of showing an empty checkout. Never place a second order.
+  useEffect(() => {
+    try { const id = sessionStorage.getItem("ek_pay_order"); if (id && /^\d+$/.test(id)) { sessionStorage.removeItem("ek_pay_order"); router.replace(`/orders/${id}`); } } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // While the order request or the payment window is running, warn before a refresh/close.
+  useEffect(() => {
+    if (!busy) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [busy]);
+  useEffect(() => { syncStock().then((ok) => setStockOk(ok)); }, []); // eslint-disable-line react-hooks/exhaustive-deps — re-check live stock when checkout opens
 
   // Step 2 gets its own history entry, so the browser Back button returns to step 1 instead of leaving checkout.
   useEffect(() => {
@@ -102,6 +115,7 @@ function Checkout() {
 
   /** Step 1 → 2: stock and address must be fine before the customer gets to pick how to pay. */
   function goPayment() {
+    if (stockOk !== true) return toast.error(stockOk === false ? "We couldn't check live stock. Check your connection and refresh." : "Checking stock… one moment");
     if (problems.length) return toast.error(problems[0]);
     const ve = validateAddress(cleanAddress(form)); // same rules the server enforces
     setErrs(ve);
@@ -115,6 +129,7 @@ function Checkout() {
 
   async function place() {
     if (placing.current) return; // a second click/tap before the button re-renders must not create a second order
+    if (stockOk !== true) return toast.error(stockOk === false ? "We couldn't check live stock. Check your connection and refresh." : "Checking stock… one moment");
     if (problems.length) return toast.error(problems[0]);
     const clean = cleanAddress(form);
     const ve = validateAddress(clean);
@@ -134,20 +149,24 @@ function Checkout() {
     if (method === "cod") {
       setBusy(false); toast.success("Order placed successfully!"); finish(); return router.replace(`/order-success/${d.id}`);
     }
+    const clearPending = () => { try { sessionStorage.removeItem("ek_pay_order"); } catch {} };
+    try { sessionStorage.setItem("ek_pay_order", String(d.id)); } catch {}
     try {
       finish(); // the order exists; from here the customer is either paying or can resume from My Orders
       await openPayment(d.id, { name: clean.customer_name, contact: clean.phone }, {
         onPaid: async (res) => {
+          clearPending();
           setVerifying(true); // full-screen "confirming" overlay + back-button guard until we have an answer
           const ok = await verifyPayment(d.id, res);
           if (ok) toast.success("Payment successful!"); else toast.error("We're still confirming your payment. Check My Orders in a minute.");
           setVerifying(false);
           router.replace(ok ? `/order-success/${d.id}` : `/orders/${d.id}`);
         },
-        onDismiss: () => { toast.error("Payment not completed. Your order is saved — you can pay from My Orders."); router.replace(`/orders/${d.id}`); },
+        onDismiss: () => { clearPending(); toast.error("Payment not completed. Your order is saved — you can pay from My Orders."); router.replace(`/orders/${d.id}`); },
         onFailed: () => toast.error("Payment failed. You can try again from your order page."),
       });
     } catch (err) {
+      clearPending();
       toast.error(err instanceof Error ? err.message : "Could not start payment");
       router.replace(`/orders/${d.id}`);
     } finally { setBusy(false); }
@@ -274,11 +293,11 @@ function Checkout() {
             {step === 1 ? (
               <>
                 <p className="mb-1.5 hidden text-center text-xs text-gray-500 md:block">Clicking “Continue” will not deduct any money</p>
-                <button className="btn-primary w-full" onClick={goPayment} disabled={!loaded || problems.length > 0}>Continue · {inr(total)}</button>
+                <button className="btn-primary w-full" onClick={goPayment} disabled={!loaded || stockOk !== true || problems.length > 0}>Continue · {inr(total)}</button>
               </>
             ) : (
               <div className="space-y-2">
-                <button className="btn-primary w-full" onClick={place} disabled={busy || problems.length > 0}>
+                <button className="btn-primary w-full" onClick={place} disabled={busy || stockOk !== true || problems.length > 0}>
                   {busy ? "Placing order…" : method === "online" ? `Pay ${inr(total)} & Place Order` : `Place Order · ${inr(total)}`}
                 </button>
                 <button type="button" className="w-full text-center text-sm font-medium text-gray-600 hover:text-brand-700" onClick={backToReview} disabled={busy}>← Back to review</button>

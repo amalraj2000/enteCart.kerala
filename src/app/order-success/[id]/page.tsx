@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
 import { reconcilePayment } from "@/lib/reconcilePayment";
@@ -7,13 +8,16 @@ export const dynamic = "force-dynamic";
 export default async function Success({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // Read the real payment state from the DB (and Razorpay, if still unpaid) — the URL alone proves nothing.
-  let online = false, paid = false;
+  let online = false, paid = false, found = false;
   const user = await getUser();
   if (user && /^\d+$/.test(id)) {
     const c = await db();
     const o = (await c.execute({ sql: "SELECT payment_method FROM orders WHERE id = ? AND user_id = ?", args: [Number(id), user.id] })).rows[0];
+    found = !!o;
     if (o?.payment_method === "online") { online = true; paid = (await reconcilePayment(c, Number(id))) === "Paid"; }
   }
+  // Never show "Order placed!" for an order that doesn't exist or isn't yours (e.g. a typed/refreshed URL).
+  if (!found) redirect("/orders");
   return (
     <div className="card mx-auto max-w-md p-10 text-center">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-3xl text-brand-700">{online && !paid ? "…" : "✓"}</div>

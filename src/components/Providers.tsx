@@ -9,7 +9,7 @@ type Ctx = {
   openAuth: (cb?: () => void) => void; closeAuth: () => void; authOpen: boolean;
   setUser: (u: User) => void; refreshUser: () => Promise<void>; logout: () => Promise<void>;
   cart: CartItem[]; cartCount: number; cartTotal: number;
-  addToCart: (i: CartItem) => { added: number; stock: number; capped: boolean; inCart: number }; syncStock: () => Promise<void>; setQty: (id: number, size: string, qty: number) => void;
+  addToCart: (i: CartItem) => { added: number; stock: number; capped: boolean; inCart: number }; syncStock: () => Promise<boolean>; setQty: (id: number, size: string, qty: number) => void;
   removeItem: (id: number, size: string) => void; clearCart: () => void;
   buyNow: (i: CartItem) => void; resetBuyNow: () => void; checkoutItems: CartItem[];
   afterAuth: () => void;
@@ -94,10 +94,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const syncStock = useCallback(async () => {
     const all = [...cartRef.current, ...(buyNowRef.current ? [buyNowRef.current] : [])];
     const ids = [...new Set(all.map((i) => i.id))];
-    if (!ids.length) return;
-    const r = await fetch(`/api/stock?ids=${ids.join(",")}`).catch(() => null);
-    if (!r?.ok) return;
-    const live: Record<string, number> = (await r.json()).stock;
+    if (!ids.length) return true;
+    const r = await fetch(`/api/stock?ids=${ids.join(",")}`, { cache: "no-store" }).catch(() => null);
+    if (!r?.ok) return false; // couldn't verify — callers must not let the order through on stale numbers
+    const body = await r.json();
+    const live: Record<string, number> = body.stock;
+    const gone = new Set<number>(body.gone || []);
     const notes: string[] = [];
     const fix = (items: CartItem[]): CartItem[] => {
       const used = new Map<number, number>();
@@ -107,7 +109,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         const qty = stock <= 0 ? x.qty : Math.max(1, Math.min(x.qty, left));
         if (stock > 0 && qty < x.qty) notes.push(`“${x.title}” reduced to ${qty} — only ${stock} in stock`);
         used.set(x.id, (used.get(x.id) || 0) + (stock <= 0 ? 0 : qty));
-        return { ...x, stock, qty };
+        return { ...x, stock: gone.has(x.id) ? 0 : stock, qty, gone: gone.has(x.id) };
       });
     };
     // Computed synchronously (not inside a state updater) so the notes below are ready when we toast them.
@@ -116,6 +118,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     setCart(fixedCart);
     setBuyNowItem(fixedBuyNow);
     [...new Set(notes)].forEach((n) => toast.error(n));
+    return true;
   }, []);
 
   const ctx: Ctx = {
