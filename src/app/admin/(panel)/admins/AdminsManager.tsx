@@ -15,7 +15,7 @@ const badge = { active: "bg-green-100 text-green-800", inactive: "bg-gray-200 te
 export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: PageInfo; meId: number }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: "", vendor_name: "", identifier: "", password: "" });
+  const [form, setForm] = useState({ role: "subadmin", name: "", vendor_name: "", identifier: "", password: "", confirm_password: "" });
   const [errs, setErrs] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -28,18 +28,20 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    const v = cleanStaff(form), ve = validateStaff(v); setErrs(ve);
+    const v = cleanStaff(form), ve = validateStaff(v);
+    if (v.role === "admin" && !form.confirm_password) ve.confirm_password = "Enter your own password to confirm";
+    setErrs(ve);
     if (firstError(ve)) return toast.error("Please fix the highlighted fields");
     setBusy(true);
-    const r = await call("/api/admin/admins", "POST", v);
+    const r = await call("/api/admin/admins", "POST", { ...v, confirm_password: form.confirm_password });
     setBusy(false);
-    if (!r.ok) return toast.error(r.error || "Could not create sub admin");
-    toast.success(`Sub admin ${v.name} created`); setAdding(false); router.refresh();
+    if (!r.ok) return toast.error(r.error || "Could not create the admin");
+    toast.success(`${v.role === "admin" ? "Super admin" : "Sub admin"} ${v.name} created`); setAdding(false); router.refresh();
   }
   async function remove(a: A) {
-    if (!confirm(`Delete sub admin ${a.name || login(a)}? They will lose access immediately.`)) return;
+    if (!confirm(`Delete ${a.role === "admin" ? "super admin" : "sub admin"} ${a.name || login(a)}? They will lose access immediately.`)) return;
     const r = await call(`/api/admin/admins/${a.id}`, "DELETE");
-    r.ok ? toast.success("Sub admin deleted") : toast.error(r.error || "Could not delete");
+    r.ok ? toast.success("Admin deleted") : toast.error(r.error || "Could not delete");
     router.refresh();
   }
   const RoleBadge = ({ a }: { a: A }) => a.role === "admin"
@@ -47,7 +49,7 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
     : <span className="whitespace-nowrap rounded-full border border-brand-600 px-3 py-1 text-xs font-semibold text-brand-700">Sub admin</span>;
   const Status = ({ a }: { a: A }) => <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold capitalize ${badge[a.status]}`}>{a.status}</span>;
   // The list only has Edit and Delete. Name, vendor name, login, status and password are all changed on the Edit page.
-  const Actions = ({ a, cls }: { a: A; cls: string }) => a.role !== "subadmin" ? <span className="text-xs text-gray-400">Super admin account</span> : (
+  const Actions = ({ a, cls }: { a: A; cls: string }) => a.id === meId ? <span className="text-xs text-gray-400">This is you</span> : (
     <>
       <Link href={`/admin/admins/${a.id}/edit`} className={`btn-outline ${cls}`}>Edit</Link>
       <button className={`btn-danger ${cls}`} onClick={() => remove(a)}>Delete</button>
@@ -59,19 +61,29 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <button type="button" className="text-sm font-medium text-brand-700 hover:underline" onClick={() => setAdding(false)}>← Back to admins</button>
-          <h1 className="text-xl font-bold">Add sub admin</h1>
+          <h1 className="text-xl font-bold">Add admin</h1>
         </div>
         <form onSubmit={create} noValidate className="card max-w-lg space-y-4 p-5">
-          <p className="rounded-lg bg-brand-50 p-3 text-sm text-brand-900">A sub admin can manage everything in the admin area <b>except the Admins menu</b>. They log in from the normal login box with the details below.</p>
+          <label className="block text-sm font-medium">Role<Req />
+            <select className="input mt-1" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+              <option value="subadmin">Sub admin — manages products, orders, users…</option>
+              <option value="admin">Super admin — full access</option>
+            </select>
+          </label>
+          <p className={`rounded-lg p-3 text-sm ${form.role === "admin" ? "bg-amber-50 text-amber-900" : "bg-brand-50 text-brand-900"}`}>
+            {form.role === "admin"
+              ? <>A <b>super admin</b> has full control: Admins, Settings, Payments and refunds, deleting users — everything. Only give this to someone you fully trust.</>
+              : <>A sub admin can manage everything in the admin area <b>except the Admins, Settings and Payments menus</b>. They log in from the normal login box with the details below.</>}
+          </p>
           <label className="block text-sm font-medium">Name<Req />
             <input className={`input mt-1 ${errs.name ? "!border-red-500" : ""}`} maxLength={50} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
             <FieldError msg={errs.name} />
           </label>
-          <label className="block text-sm font-medium">Vendor name<Req />
+          {form.role === "subadmin" && <label className="block text-sm font-medium">Vendor name<Req />
             <input className={`input mt-1 ${errs.vendor_name ? "!border-red-500" : ""}`} maxLength={VENDOR_NAME_MAX} value={form.vendor_name} onChange={(e) => setForm({ ...form, vendor_name: e.target.value })} placeholder="e.g. Meera Traders" />
             <span className="mt-1 block text-xs font-normal text-gray-500">An internal label for this sub admin, shown only in the admin panel and used to welcome them. Customers always see “Sold by enteCart.kerala”.</span>
             <FieldError msg={errs.vendor_name} />
-          </label>
+          </label>}
           <label className="block text-sm font-medium">Login — email or 10-digit phone<Req />
             <input className={`input mt-1 ${errs.identifier ? "!border-red-500" : ""}`} maxLength={100} autoComplete="off" value={form.identifier} onChange={(e) => setForm({ ...form, identifier: e.target.value })} placeholder="staff@example.com" />
             <FieldError msg={errs.identifier} />
@@ -84,8 +96,13 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
             <span className="mt-1 block text-xs font-normal text-gray-500">6–72 characters. Share it securely — they can change it later from their Account page.</span>
             <FieldError msg={errs.password} />
           </label>
+          {form.role === "admin" && <label className="block text-sm font-medium">Your own password (to confirm)<Req />
+            <input className={`input mt-1 ${errs.confirm_password ? "!border-red-500" : ""}`} type="password" maxLength={72} autoComplete="current-password" value={form.confirm_password} onChange={(e) => setForm({ ...form, confirm_password: e.target.value })} />
+            <span className="mt-1 block text-xs font-normal text-gray-500">Creating a super admin needs you to confirm it is really you.</span>
+            <FieldError msg={errs.confirm_password} />
+          </label>}
           <div className="flex gap-2">
-            <button className="btn-primary" disabled={busy}>{busy ? "Creating…" : "Create sub admin"}</button>
+            <button className="btn-primary" disabled={busy}>{busy ? "Creating…" : form.role === "admin" ? "Create super admin" : "Create sub admin"}</button>
             <button type="button" className="btn border" onClick={() => setAdding(false)}>Cancel</button>
           </div>
         </form>
@@ -95,8 +112,8 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <div><h1 className="text-xl font-bold">Admins ({pi.total})</h1><p className="text-sm text-gray-500">The super admin and sub admins who help run the shop.</p></div>
-        <button className="btn-primary shrink-0" onClick={() => { setForm({ name: "", vendor_name: "", identifier: "", password: "" }); setErrs({}); setShowPw(false); setAdding(true); }}>+ Add sub admin</button>
+        <div><h1 className="text-xl font-bold">Admins ({pi.total})</h1><p className="text-sm text-gray-500">Super admins and sub admins who run the shop.</p></div>
+        <button className="btn-primary shrink-0" onClick={() => { setForm({ role: "subadmin", name: "", vendor_name: "", identifier: "", password: "", confirm_password: "" }); setErrs({}); setShowPw(false); setAdding(true); }}>+ Add admin</button>
       </div>
 
       {/* Phones: cards */}
@@ -111,10 +128,10 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
                 <p className="truncate text-sm text-gray-600">{a.email || "No email"}</p>
                 <p className="text-sm text-gray-600">{a.phone || "No phone"}</p>
               </div>
-              <div className="flex flex-col items-end gap-1"><RoleBadge a={a} />{a.role === "subadmin" && <Status a={a} />}</div>
+              <div className="flex flex-col items-end gap-1"><RoleBadge a={a} /><Status a={a} /></div>
             </div>
             <p className="mt-2 text-xs text-gray-400">Added {a.created_at}</p>
-            {a.role === "subadmin" && <div className="mt-3 grid grid-cols-2 gap-2"><Actions a={a} cls="w-full" /></div>}
+            <div className="mt-3 grid grid-cols-2 gap-2"><Actions a={a} cls="w-full" /></div>
           </li>
         ))}
       </ul>
@@ -131,7 +148,7 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
                 <td className="p-3 text-gray-700">{a.email || "—"}</td>
                 <td className="p-3 text-gray-700">{a.phone || "—"}</td>
                 <td className="p-3"><RoleBadge a={a} /></td>
-                <td className="p-3">{a.role === "subadmin" ? <Status a={a} /> : <span className="text-gray-400">—</span>}</td>
+                <td className="p-3"><Status a={a} /></td>
                 <td className="whitespace-nowrap p-3 text-gray-600">{a.created_at.slice(0, 10)}</td>
                 <td className="p-3"><div className="flex flex-wrap justify-end gap-1.5"><Actions a={a} cls="!min-h-0 !px-2.5 !py-1 text-xs" /></div></td>
               </tr>

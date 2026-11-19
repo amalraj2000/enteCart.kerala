@@ -7,27 +7,29 @@ import Req from "@/components/Req";
 import FieldError from "@/components/FieldError";
 import { type Errors, VENDOR_NAME_MAX, cleanAccount, firstError, validateAccount, validatePassword } from "@/lib/validate";
 
-type A = { id: number; name: string; vendor_name: string; email: string; phone: string; status: string; created_at: string };
+type A = { id: number; role: string; name: string; vendor_name: string; email: string; phone: string; status: string; created_at: string };
 
-/** Full edit page for a sub admin: name, vendor name, login email / phone, status and (optionally) a new password. */
+/** Full edit page for a sub admin or super admin: role, name, vendor name, login email / phone, status and (optionally) a new password. */
 export default function EditAdminForm({ admin }: { admin: A }) {
   const router = useRouter();
-  const [f, setF] = useState({ name: admin.name, vendor_name: admin.vendor_name, email: admin.email, phone: admin.phone, status: admin.status, password: "" });
+  const [f, setF] = useState({ role: admin.role, confirm_password: "", name: admin.name, vendor_name: admin.vendor_name, email: admin.email, phone: admin.phone, status: admin.status, password: "" });
   const [errs, setErrs] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const v = cleanAccount(f), ve = validateAccount(v, { nameRequired: true, vendor: true });
+    const v = cleanAccount(f), ve = validateAccount(v, { nameRequired: true, vendor: f.role === "subadmin" });
+    const roleChanged = f.role !== admin.role;
+    if (roleChanged && !f.confirm_password) ve.confirm_password = "Enter your own password to confirm";
     if (f.password) { const pe = validatePassword(f.password, "Password"); if (pe) ve.password = pe; }
     setErrs(ve);
     if (firstError(ve)) return toast.error("Please fix the highlighted fields");
     setBusy(true);
-    const r = await fetch(`/api/admin/admins/${admin.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: v.name, vendor_name: v.vendor_name, email: v.email, phone: v.phone, status: f.status, password: f.password }) });
+    const r = await fetch(`/api/admin/admins/${admin.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: f.role, confirm_password: f.confirm_password, name: v.name, vendor_name: v.vendor_name, email: v.email, phone: v.phone, status: f.status, password: f.password }) });
     setBusy(false);
     if (!r.ok) return toast.error((await r.json().catch(() => ({}))).error || "Could not save");
-    toast.success("Sub admin updated");
+    toast.success(roleChanged ? `Now a ${f.role === "admin" ? "super admin" : "sub admin"}` : "Admin updated");
     router.push("/admin/admins"); router.refresh();
   }
 
@@ -41,9 +43,26 @@ export default function EditAdminForm({ admin }: { admin: A }) {
 
   return (
     <form onSubmit={save} noValidate className="card max-w-lg space-y-4 p-5">
-      <div><h1 className="text-xl font-bold">Edit sub admin <span className="text-base font-medium text-gray-400">#{admin.id}</span></h1><p className="text-sm text-gray-500">Added {admin.created_at}</p></div>
+      <div><h1 className="text-xl font-bold">Edit admin <span className="text-base font-medium text-gray-400">#{admin.id}</span></h1><p className="text-sm text-gray-500">Added {admin.created_at}</p></div>
+      <label className="block text-sm font-medium">Role
+        <select className="input mt-1" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
+          <option value="subadmin">Sub admin — manages products, orders, users…</option>
+          <option value="admin">Super admin — full access</option>
+        </select>
+      </label>
+      {f.role !== admin.role && (
+        <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p>{f.role === "admin"
+            ? <>You are making this person a <b>super admin</b>: full control of Admins, Settings, Payments and refunds, and deleting users.</>
+            : <>You are making this person a <b>sub admin</b>: they lose access to Admins, Settings and Payments straight away.</>}</p>
+          <label className="block font-medium">Your own password (to confirm)<Req />
+            <input className={`input mt-1 ${errs.confirm_password ? "!border-red-500" : ""}`} type="password" maxLength={72} autoComplete="current-password" value={f.confirm_password} onChange={(e) => setF({ ...f, confirm_password: e.target.value })} />
+            <FieldError msg={errs.confirm_password} />
+          </label>
+        </div>
+      )}
       {input("name", "Name", true, { maxLength: 50 })}
-      {input("vendor_name", "Vendor name", true, { maxLength: VENDOR_NAME_MAX, placeholder: "e.g. Meera Traders" }, "An internal label shown only in the admin panel. Customers always see “Sold by enteCart.kerala”.")}
+      {f.role === "subadmin" && input("vendor_name", "Vendor name", true, { maxLength: VENDOR_NAME_MAX, placeholder: "e.g. Meera Traders" }, "An internal label shown only in the admin panel. Customers always see “Sold by enteCart.kerala”.")}
       {input("email", "Email (login)", false, { type: "email", maxLength: 100, autoComplete: "off" })}
       {input("phone", "Phone number (login)", false, { inputMode: "numeric", maxLength: 10, autoComplete: "off" }, "Add an email, a phone number, or both.")}
       <label className="block text-sm font-medium">Status

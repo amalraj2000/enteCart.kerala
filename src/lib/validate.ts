@@ -243,12 +243,12 @@ export function validateVendorName(v: string): string | null {
   if (!/^[\p{L}\p{N}][\p{L}\p{N} &.,'’()\-]*$/u.test(v)) return "Vendor name can only contain letters, numbers, spaces and & . , ' ( ) -";
   return null;
 }
-export const cleanStaff = (b: Record<string, unknown>) => ({ name: str(b.name).replace(/\s+/g, " "), vendor_name: str(b.vendor_name).replace(/\s+/g, " "), identifier: str(b.identifier).toLowerCase(), password: typeof b.password === "string" ? b.password : "" });
+export const cleanStaff = (b: Record<string, unknown>) => ({ name: str(b.name).replace(/\s+/g, " "), vendor_name: str(b.vendor_name).replace(/\s+/g, " "), role: (b.role === "admin" ? "admin" : "subadmin") as "admin" | "subadmin", identifier: str(b.identifier).toLowerCase(), password: typeof b.password === "string" ? b.password : "" });
 export function validateStaff(v: ReturnType<typeof cleanStaff>): Errors {
   const e: Errors = {};
   const n = nameErr(v.name, "Name", true);
   if (n) e.name = n; else if (v.name.length < 2) e.name = "Name must be at least 2 characters";
-  const vn = validateVendorName(v.vendor_name); if (vn) e.vendor_name = vn;
+  if (v.role === "subadmin") { const vn = validateVendorName(v.vendor_name); if (vn) e.vendor_name = vn; } // super admins don't need a vendor name
   if (!v.identifier) e.identifier = "Email or phone number is required";
   else if (/^\d+$/.test(v.identifier)) { if (!/^\d{10}$/.test(v.identifier)) e.identifier = "Phone number must be exactly 10 digits"; }
   else if (v.identifier.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.identifier)) e.identifier = "Enter a valid email address or 10-digit phone number";
