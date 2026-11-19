@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { getAdmin } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { canEditRow } from "@/lib/permissions";
 import EditCategoryForm from "./EditCategoryForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditCategory({ params }: { params: Promise<{ id: string }> }) {
-  const me = (await getAdmin())!;
+  const me = await requireAdmin();
   const c = await db();
   const r = (await c.execute({ sql: "SELECT c.id, c.name, c.status, c.created_by, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS count FROM categories c WHERE c.id = ?", args: [Number((await params).id) || 0] })).rows[0];
   if (!r) notFound();

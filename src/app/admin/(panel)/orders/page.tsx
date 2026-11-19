@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getAdmin } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { editableOrderIds } from "@/lib/permissions";
 import { withImages } from "@/lib/orderItems";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminOrders({ searchParams }: { searchParams: Promise<{ page?: string; status?: string; date?: string; month?: string }> }) {
   const sp = await searchParams;
-  const me = (await getAdmin())!; // the layout already guarantees staff
+  const me = await requireAdmin(); // the layout already guarantees staff
   const status = typeof sp.status === "string" && ORDER_STATUSES.includes(sp.status) ? sp.status : "All";
   const c = await db();
 

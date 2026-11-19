@@ -33,6 +33,9 @@ export async function PUT(req: Request, { params }: Ctx) {
   const err = hasName ? validateCategoryName(name) : null;
   if (err) return bad(err);
   const c = await db();
+  // Hiding a category hides every product in it — a sub admin may not do that to products other admins added.
+  if (hasStatus && b.status === "inactive" && me.role !== "admin" && (await c.execute({ sql: "SELECT 1 FROM products WHERE category_id = ? AND created_by IS NOT ? LIMIT 1", args: [id, me.id] })).rows.length)
+    return bad("Products added by other admins use this category, so it can't be deactivated.", 409);
   try {
     const sets = [...(hasName ? ["name = ?"] : []), ...(hasStatus ? ["status = ?"] : [])];
     const r = await c.execute({ sql: `UPDATE categories SET ${sets.join(", ")} WHERE id = ?`, args: [...(hasName ? [name] : []), ...(hasStatus ? [String(b.status)] : []), id] });

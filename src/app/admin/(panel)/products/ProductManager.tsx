@@ -24,7 +24,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
   const fileRef = useRef<HTMLInputElement>(null);
 
   const set = (k: string) => (e: React.ChangeEvent<any>) => setForm({ ...form, [k]: e.target.value });
-  function edit(p: Product) { setForm({ ...p, original_price: p.original_price ? p.original_price : "", category_id: p.category_id ?? "", status: p.status || "active", images: productImages(p) }); setEditing(p.id); setOpen(true); setErrs({}); }
+  function edit(p: Product) { setForm({ ...p, stock_base: p.stock, original_price: p.original_price ? p.original_price : "", category_id: p.category_id ?? "", status: p.status || "active", images: productImages(p) }); setEditing(p.id); setOpen(true); setErrs({}); }
   function add() { setForm(empty); setEditing(null); setOpen(true); setErrs({}); }
 
   const delImg = (i: number) => setForm({ ...form, images: form.images.filter((_: string, k: number) => k !== i) });
@@ -59,7 +59,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
     if (firstError(ve)) return toast.error("Please fix the highlighted fields");
     setBusy(true);
     const r = await fetch(editing ? `/api/admin/products/${editing}` : "/api/admin/products", {
-      method: editing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clean),
+      method: editing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? { ...clean, stock_base: form.stock_base } : clean),
     });
     setBusy(false);
     if (!r.ok) return toast.error((await r.json().catch(() => ({}))).error || "Could not save product");

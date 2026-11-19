@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
 import { withImages } from "@/lib/orderItems";
 import { bad, readJson } from "@/lib/http";
+import { rateLimit } from "@/lib/rateLimit";
 import { parseId } from "@/lib/validate";
 import { CANCELLABLE_STATUS } from "@/lib/orderPolicy";
 import { reconcilePayment } from "@/lib/reconcilePayment";
@@ -21,7 +22,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const r = await c.execute({ sql: "SELECT * FROM orders WHERE id = ? AND user_id = ?", args: [id, user.id] });
   if (!r.rows[0]) return bad("Order not found", 404);
   // If the customer paid but left before we recorded it, confirm with Razorpay and fix the status.
-  if (r.rows[0].payment_status === "Unpaid") {
+  if (r.rows[0].payment_status === "Unpaid" && (await rateLimit(`recon:${id}`, 2, 30))) { // at most 2 Razorpay look-ups per order per 30 s
     await reconcilePayment(c, id);
     const fresh = await c.execute({ sql: "SELECT * FROM orders WHERE id = ? AND user_id = ?", args: [id, user.id] });
     return NextResponse.json({ order: (await withImages(fresh.rows))[0] });
@@ -51,12 +52,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return bad(o.status === "Cancelled" ? "This order is already cancelled." : `This order is ${String(o.status)} and can no longer be cancelled.`, 409);
   }
   await restockOrder(c, id); // the items go back on sale
+  revalidateCatalogSoon();
   if (!online) return NextResponse.json({ ok: true });
   await reconcilePayment(c, id); // a payment that landed during the cancel is picked up (and refunded) here
   // Paid online → automatic full refund to the original payment method. If Razorpay hiccups, the order is still cancelled
   // and shows as "Refund due" in Admin → Payments, where the refund can be retried with one click.
   const rf = await refundOrder(c, id);
-  revalidateCatalogSoon();
-  revalidateCatalogSoon();
   return NextResponse.json({ ok: true, refund: rf.ok ? "done" : "pending" });
 }

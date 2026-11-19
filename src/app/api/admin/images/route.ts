@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   const c = await db();
   const r = await c.execute({ sql: "INSERT INTO product_images (data) VALUES (?)", args: [b.data] });
   // Housekeeping: drop uploads older than a day that no product or past order uses (e.g. abandoned forms).
-  await c.execute(`DELETE FROM product_images WHERE created_at < datetime('now','-1 day')
+  if (Math.random() < 0.05) await c.execute(`DELETE FROM product_images WHERE created_at < datetime('now','-1 day')
     AND NOT EXISTS (SELECT 1 FROM products WHERE instr(products.images, '/api/images/' || product_images.id || '"') > 0)
     AND NOT EXISTS (SELECT 1 FROM order_items WHERE order_items.image_url = '/api/images/' || product_images.id)
     AND NOT EXISTS (SELECT 1 FROM banners WHERE banners.image = '/api/images/' || product_images.id)`);

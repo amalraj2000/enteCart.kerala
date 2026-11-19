@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { getSuperAdmin } from "@/lib/session";
+import { requireSuperAdmin } from "@/lib/session";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import AdminsManager from "./AdminsManager";
 
@@ -8,8 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** Super admin only: sub admins who try the address directly are sent back to the dashboard. */
 export default async function AdminsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const me = await getSuperAdmin();
-  if (!me) redirect("/admin");
+  const me = await requireSuperAdmin();
   const c = await db();
   const total = Number((await c.execute("SELECT COUNT(*) AS n FROM users WHERE role IN ('admin', 'subadmin')")).rows[0].n);
   const pi = pageInfo(total, parsePage((await searchParams).page));

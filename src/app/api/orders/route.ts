@@ -6,12 +6,14 @@ import { getUser } from "@/lib/session";
 import { withImages } from "@/lib/orderItems";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import { bad, readJson } from "@/lib/http";
+import { rateLimit } from "@/lib/rateLimit";
 import { expireUnpaidOrders } from "@/lib/expireUnpaid";
 import { razorpayConfigured } from "@/lib/razorpay";
 import { CATEGORY_JOIN, VISIBLE } from "@/lib/visibility";
 import { getSavedAddress, sameAddress } from "@/lib/addresses";
 import { cleanAddress, firstError, validateAddress, validateOrderItems } from "@/lib/validate";
 export const dynamic = "force-dynamic";
+const MAX_OPEN_COD = 3;
 
 export async function GET(req: Request) {
   const user = await getUser();
@@ -59,7 +61,12 @@ export async function POST(req: Request) {
   // Anti-spam: at most 10 orders per 10 minutes per customer. Counted from the orders table itself — a plain read, no extra write
   // on every checkout, and exact across all servers. (Attempts that fail, e.g. sold out, don't count.)
   const recent = Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND created_at > datetime('now', '-10 minutes')", args: [user.id] })).rows[0].n);
-  if (recent >= 10) return bad("Too many orders in a short time. Please wait a few minutes.", 429);
+  if (recent >= 10 || !(await rateLimit(`order:${user.id}`, 10, 600))) return bad("Too many orders in a short time. Please wait a few minutes.", 429); // the 2nd check is an atomic counter, so parallel requests can't slip past
+  // Cash-on-delivery orders hold stock until the shop acts on them, so a customer can only have a few waiting at once.
+  if (!online) {
+    const open = Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND payment_method = 'cod' AND status = 'Placed'", args: [user.id] })).rows[0].n);
+    if (open >= MAX_OPEN_COD) return bad(`You already have ${MAX_OPEN_COD} Cash on Delivery orders waiting for confirmation. Please wait for them to be confirmed, or pay online.`, 429);
+  }
   await expireUnpaidOrders(c); // give back stock held by abandoned online payments (at most once a minute per server)
 
   // 1) Prices, titles, sizes and stock always come from the DB — never from the browser. ONE query for all cart lines.

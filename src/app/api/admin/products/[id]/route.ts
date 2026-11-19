@@ -34,9 +34,13 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (miss) return bad(miss);
   if (p.category_id !== null && !(await categoryExists(p.category_id))) return bad("That category no longer exists");
   const c = await db();
+  // Orders may have taken stock while the form was open. The form sends the stock it started from (stock_base), so apply only the
+  // admin's CHANGE (new − base) to the live number instead of overwriting it. Without stock_base, fall back to the absolute value.
+  const base = typeof b.stock_base === "number" && Number.isInteger(b.stock_base) && b.stock_base >= 0 ? b.stock_base : null;
+  const stockExpr = base === null ? "?" : "MAX(0, stock + ?)";
   const r = await c.execute({
-    sql: "UPDATE products SET title=?, description=?, price=?, original_price=?, stock=?, sizes=?, image_url=?, images=?, category_id=?, status=? WHERE id=?",
-    args: [p.title, p.description, p.price, p.original_price, p.stock, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, p.status, id],
+    sql: `UPDATE products SET title=?, description=?, price=?, original_price=?, stock=${stockExpr}, sizes=?, image_url=?, images=?, category_id=?, status=? WHERE id=?`,
+    args: [p.title, p.description, p.price, p.original_price, base === null ? p.stock : p.stock - base, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, p.status, id],
   });
   if (!r.rowsAffected) return bad("Product not found", 404);
   revalidateCatalog();

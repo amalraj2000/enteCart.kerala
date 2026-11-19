@@ -22,6 +22,13 @@ export function verifySignature(orderId: string, paymentId: string, signature: s
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/** Checks the X-Razorpay-Signature header of a webhook call (HMAC-SHA256 of the raw body with the webhook secret). */
+export function verifyWebhookSignature(rawBody: string, signature: string, secret: string): boolean {
+  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+  const a = Buffer.from(expected), b = Buffer.from(signature);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 /** Asks Razorpay directly whether an order has a captured payment (used when the browser never reported back). */
 export async function hasCapturedPayment(razorpayOrderId: string): Promise<string | null> {
   const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");

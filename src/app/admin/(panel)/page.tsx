@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { getAdmin } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { parseId } from "@/lib/validate";
 import { staffNameSql, welcomeName } from "@/lib/staffLabel";
 import { inr } from "@/lib/types";
@@ -54,7 +54,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const days = RANGES.includes(Number(sp.range)) ? Number(sp.range) : 30;
   const start = istDay(-days + 1), prevStart = istDay(-2 * days + 1);
-  const me = (await getAdmin())!; // the layout already guarantees staff
+  const me = await requireAdmin(); // the layout already guarantees staff
   const c = await db();
   const one = async (sql: string, args: (string | number)[] = []) => (await c.execute({ sql, args })).rows[0];
   const all = async (sql: string, args: (string | number)[] = []) => (await c.execute({ sql, args })).rows as unknown as Row[];

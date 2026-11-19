@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { getSuperAdmin } from "@/lib/session";
+import { requireSuperAdmin } from "@/lib/session";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import { inr } from "@/lib/types";
 import Pagination from "@/components/Pagination";
@@ -14,7 +14,7 @@ const badge: Record<string, string> = { Paid: "bg-green-100 text-green-800", Ref
 
 /** Online payment transactions — super admin only. */
 export default async function Payments({ searchParams }: { searchParams: Promise<{ page?: string; f?: string }> }) {
-  if (!(await getSuperAdmin())) notFound();
+  await requireSuperAdmin();
   const sp = await searchParams;
   const f = FILTERS.find((x) => x === sp.f) ?? "All";
   const where = f === "All" ? "1=1" : WHERE[f];

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getAdmin } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { canEditRow } from "@/lib/permissions";
 import { addedBySql } from "@/lib/staffLabel";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
@@ -8,7 +8,7 @@ import CategoriesManager from "./CategoriesManager";
 export const dynamic = "force-dynamic";
 
 export default async function AdminCategories({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const me = (await getAdmin())!;
+  const me = await requireAdmin();
   const c = await db();
   const total = Number((await c.execute("SELECT COUNT(*) AS n FROM categories")).rows[0].n);
   const pi = pageInfo(total, parsePage((await searchParams).page));

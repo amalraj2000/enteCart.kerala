@@ -40,7 +40,9 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
   }
   async function remove(a: A) {
     if (!confirm(`Delete ${a.role === "admin" ? "super admin" : "sub admin"} ${a.name || login(a)}? They will lose access immediately.`)) return;
-    const r = await call(`/api/admin/admins/${a.id}`, "DELETE");
+    let confirm_password = "";
+    if (a.role === "admin") { confirm_password = window.prompt("Enter YOUR OWN password to confirm deleting a super admin:") || ""; if (!confirm_password) return; }
+    const r = await call(`/api/admin/admins/${a.id}`, "DELETE", { confirm_password });
     r.ok ? toast.success("Admin deleted") : toast.error(r.error || "Could not delete");
     router.refresh();
   }

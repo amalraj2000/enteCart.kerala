@@ -7,6 +7,15 @@ import { bad, readJson } from "@/lib/http";
 import { parseId, validateStatus } from "@/lib/validate";
 import { reserveOrder, restockOrder } from "@/lib/orderStock";
 
+/** Allowed moves. Orders only go forward; cancelling is possible until it ships; a cancelled order can be re-opened (stock permitting). */
+const NEXT: Record<string, string[]> = {
+  Placed: ["Confirmed", "Cancelled"],
+  Confirmed: ["Shipped", "Cancelled"],
+  Shipped: ["Delivered"],
+  Delivered: [],
+  Cancelled: ["Placed"],
+};
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await getAdmin();
   if (!me) return bad("Unauthorized", 401);
@@ -22,6 +31,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!(await editableOrderIds(c, me, [id])).has(id)) return bad("You can only update orders that include products you added", 403);
   const prev = String(cur.status);
   if (prev === next) return NextResponse.json({ ok: true });
+  if (!(NEXT[prev] ?? []).includes(next)) return bad(`A ${prev.toLowerCase()} order can't be moved to “${next}”.`, 409);
 
   if (cur.payment_status === "Refunded" && next !== "Cancelled") return bad("This order was refunded, so it can't be re-opened.", 409);
   if (cur.payment_method === "online" && cur.payment_status === "Unpaid" && next !== "Placed" && next !== "Cancelled") return bad("This online order hasn't been paid yet, so it can't be confirmed or shipped.", 409);

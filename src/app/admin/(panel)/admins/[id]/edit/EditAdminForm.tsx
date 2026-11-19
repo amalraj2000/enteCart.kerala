@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/components/Toaster";
 import Req from "@/components/Req";
 import FieldError from "@/components/FieldError";
-import { type Errors, VENDOR_NAME_MAX, cleanAccount, firstError, validateAccount, validatePassword } from "@/lib/validate";
+import { STAFF_PASSWORD_MIN, type Errors, VENDOR_NAME_MAX, cleanAccount, firstError, validateAccount, validatePassword } from "@/lib/validate";
 
 type A = { id: number; role: string; name: string; vendor_name: string; email: string; phone: string; status: string; created_at: string };
 
@@ -17,12 +17,16 @@ export default function EditAdminForm({ admin }: { admin: A }) {
   const [busy, setBusy] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
+  // Sensitive changes to a super admin (or to anyone's role) need the acting admin's own password.
+  const loginChanged = !!f.password || f.email.trim().toLowerCase() !== (admin.email || "") || f.phone.replace(/\s+/g, "") !== (admin.phone || "") || f.status !== admin.status;
+  const needsConfirm = f.role !== admin.role || (admin.role === "admin" && loginChanged);
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     const v = cleanAccount(f), ve = validateAccount(v, { nameRequired: true, vendor: f.role === "subadmin" });
     const roleChanged = f.role !== admin.role;
-    if (roleChanged && !f.confirm_password) ve.confirm_password = "Enter your own password to confirm";
-    if (f.password) { const pe = validatePassword(f.password, "Password"); if (pe) ve.password = pe; }
+    if (needsConfirm && !f.confirm_password) ve.confirm_password = "Enter your own password to confirm";
+    if (f.password) { const pe = validatePassword(f.password, "Password", STAFF_PASSWORD_MIN); if (pe) ve.password = pe; }
     setErrs(ve);
     if (firstError(ve)) return toast.error("Please fix the highlighted fields");
     setBusy(true);
@@ -50,9 +54,9 @@ export default function EditAdminForm({ admin }: { admin: A }) {
           <option value="admin">Super admin — full access</option>
         </select>
       </label>
-      {f.role !== admin.role && (
+      {needsConfirm && (
         <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <p>{f.role === "admin"
+          <p>{f.role === admin.role ? <>You are changing a <b>super admin</b>&apos;s login details, status or password.</> : f.role === "admin"
             ? <>You are making this person a <b>super admin</b>: full control of Admins, Settings, Payments and refunds, and deleting users.</>
             : <>You are making this person a <b>sub admin</b>: they lose access to Admins, Settings and Payments straight away.</>}</p>
           <label className="block font-medium">Your own password (to confirm)<Req />

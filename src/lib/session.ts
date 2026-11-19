@@ -1,10 +1,12 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { db } from "./db";
 
 const secret = () => {
   const s = process.env.SESSION_SECRET;
-  if (process.env.NODE_ENV === "production" && (!s || s.length < 32)) throw new Error("SESSION_SECRET must be set (32+ chars) in production");
+  // The public fallback secret is for `next dev` only; every other environment (staging, preview, prod) must set a real one.
+  if (process.env.NODE_ENV !== "development" && (!s || s.length < 32)) throw new Error("SESSION_SECRET must be set (32+ chars)");
   return new TextEncoder().encode(s || "dev-insecure-secret-change-me-please-32");
 };
 const USER_COOKIE = "ek_session";
@@ -48,9 +50,11 @@ export async function getUser() {
   const s = await getSession("user");
   if (!s) return null;
   const c = await db();
-  const r = await c.execute({ sql: "SELECT status, role, email, phone FROM users WHERE id = ?", args: [Number(s.uid)] });
+  const r = await c.execute({ sql: "SELECT status, role, email, phone, password FROM users WHERE id = ?", args: [Number(s.uid)] });
   const u = r.rows[0];
   if (!u || u.status !== "active" || u.role !== "user") return null;
+  // The session is tied to the current password: changing or resetting it ends every older session.
+  if (s.ph !== pwTag(String(u.password))) return null;
   return { id: Number(s.uid), identifier: String(u.email || u.phone || "") };
 }
 /** Short fingerprint of a password hash, stored inside the admin session token. */
@@ -68,6 +72,19 @@ export async function getAdmin() {
   // The session is tied to the current password: resetting it (by the owner, or by the person themself) ends every older session.
   if (u && s.ph !== pwTag(String(u.password))) return null;
   return u ? { id: Number(u.id), identifier: String(u.email || u.phone || ""), role: String(u.role) as StaffRole, name: String(u.name || ""), vendor_name: String(u.vendor_name || "") } : null;
+}
+/** For pages: a logged-out / expired staff session is sent to the login. Layouts are NOT a security boundary in Next.js, so every admin page calls this itself. */
+export async function requireAdmin() {
+  const me = await getAdmin();
+  if (!me) redirect("/?login=1");
+  return me;
+}
+/** For owner-only pages. */
+export async function requireSuperAdmin() {
+  const me = await getAdmin();
+  if (!me) redirect("/?login=1");
+  if (me.role !== "admin") redirect("/admin");
+  return me;
 }
 /** Any staff member (admin or sub admin) — guards the whole admin area. */
 export const isAdmin = async () => !!(await getAdmin());

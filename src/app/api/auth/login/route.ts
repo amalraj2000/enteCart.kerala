@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   if (err) return bad(err);
   const id = str(b.identifier).toLowerCase();
   const ip = clientIp(req);
-  if (!(await rateLimit(`login-ip:${ip}`, 30, 600)) || !(await rateLimit(`login:${ip}:${id}`, 8, 600)))
+  if (!(await rateLimit(`login-ip:${ip}`, 30, 600)) || !(await rateLimit(`login:${ip}:${id}`, 8, 600)) || !(await rateLimit(`login-acct:${id}`, 15, 900))) // the last one caps guesses per ACCOUNT, however many IPs the attacker uses
     return bad("Too many login attempts. Please wait 10 minutes and try again.", 429);
 
   const c = await db();
@@ -37,6 +37,6 @@ export async function POST(req: Request) {
     await setSession("admin", { uid: Number(u.id), ph: pwTag(String(u.password)) });
     return NextResponse.json({ admin: true, welcome: welcomeName({ role: "subadmin", name: String(u.name || ""), vendor_name: String(u.vendor_name || ""), email: u.email ? String(u.email) : null }) });
   }
-  await setSession("user", { uid: Number(u.id), identifier: String(u.email || u.phone) });
+  await setSession("user", { uid: Number(u.id), identifier: String(u.email || u.phone), ph: pwTag(String(u.password)) });
   return NextResponse.json({ user: { id: Number(u.id), identifier: String(u.email || u.phone) } });
 }

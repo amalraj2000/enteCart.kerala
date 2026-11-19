@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getAdmin } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import { customerNameSql } from "@/lib/userName";
 import UsersTable from "./UsersTable";
@@ -7,7 +7,7 @@ import UsersTable from "./UsersTable";
 export const dynamic = "force-dynamic";
 
 export default async function Users({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const me = (await getAdmin())!;
+  const me = await requireAdmin();
   const c = await db();
   const total = Number((await c.execute("SELECT COUNT(*) AS n FROM users WHERE role = 'user'")).rows[0].n);
   const pi = pageInfo(total, parsePage((await searchParams).page));

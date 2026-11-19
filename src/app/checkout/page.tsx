@@ -46,6 +46,7 @@ function Checkout() {
   const [busy, setBusy] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const verifyingRef = useRef(false);
+  const placing = useRef(false);
   const [method, setMethod] = useState<"cod" | "online">("cod");
   const [loaded, setLoaded] = useState(false);
 
@@ -111,18 +112,21 @@ function Checkout() {
   function backToReview() { if (history.state?.step === 2) history.back(); else setStep(1); }
 
   async function place() {
+    if (placing.current) return; // a second click/tap before the button re-renders must not create a second order
     if (problems.length) return toast.error(problems[0]);
     const clean = cleanAddress(form);
     const ve = validateAddress(clean);
     setErrs(ve);
     if (firstError(ve)) { setStep(1); setEditAddr(true); return toast.error("Please fix your delivery address"); }
+    placing.current = true;
     setBusy(true);
     const r = await fetch("/api/orders", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...clean, payment_method: method, items: checkoutItems.map((i) => ({ id: i.id, size: i.size, qty: i.qty })) }),
-    });
+    }).catch(() => null);
+    if (!r) { placing.current = false; setBusy(false); return toast.error("Network problem — check your connection and try again. (If you were charged, see My Orders.)"); }
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { setBusy(false); return toast.error(d.error || "Could not place order"); }
+    if (!r.ok) { placing.current = false; setBusy(false); return toast.error(d.error || "Could not place order"); }
     // The order exists now (stock reserved). Buy Now leaves the cart untouched; a normal checkout empties it.
     const finish = () => { if (new URLSearchParams(location.search).get("buynow")) resetBuyNow(); else clearCart(); };
     if (method === "cod") {

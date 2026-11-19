@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { setSession } from "@/lib/session";
+import { pwTag, setSession } from "@/lib/session";
 import { bad, clientIp, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
 import { firstError, str, validateAuth } from "@/lib/validate";
@@ -21,6 +21,6 @@ export async function POST(req: Request) {
   const hash = await bcrypt.hash(b.password as string, 10);
   const isPhone = /^\d{10}$/.test(id); // a 10-digit number is stored as the phone, anything else (a Gmail) as the email
   const r = await c.execute({ sql: "INSERT INTO users (email, phone, password) VALUES (?, ?, ?)", args: [isPhone ? null : id, isPhone ? id : null, hash] });
-  await setSession("user", { uid: Number(r.lastInsertRowid), identifier: id });
+  await setSession("user", { uid: Number(r.lastInsertRowid), identifier: id, ph: pwTag(hash) });
   return NextResponse.json({ user: { id: Number(r.lastInsertRowid), identifier: id } });
 }

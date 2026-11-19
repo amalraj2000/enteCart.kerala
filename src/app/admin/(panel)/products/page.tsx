@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getAdmin } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { canEditRow } from "@/lib/permissions";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import { parseId } from "@/lib/validate";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ page?: string; by?: string }> }) {
   const sp = await searchParams;
-  const me = (await getAdmin())!; // the layout already guarantees staff
+  const me = await requireAdmin(); // the layout already guarantees staff
   const c = await db();
   const staff = (await c.execute(`SELECT id, ${staffNameSql("users")} AS name FROM users WHERE role IN ('admin', 'subadmin') ORDER BY (role = 'admin') DESC, id`)).rows as unknown as { id: number; name: string }[];
 

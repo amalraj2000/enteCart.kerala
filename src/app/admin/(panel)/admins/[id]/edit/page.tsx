@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { getSuperAdmin } from "@/lib/session";
+import { requireSuperAdmin } from "@/lib/session";
 import EditAdminForm from "./EditAdminForm";
 
 export const dynamic = "force-dynamic";
 
 /** Super admin only. Edits a sub admin or another super admin — never your own account (that is the Account page). */
 export default async function EditAdmin({ params }: { params: Promise<{ id: string }> }) {
-  const me = await getSuperAdmin();
-  if (!me) redirect("/admin");
+  const me = await requireSuperAdmin();
   const c = await db();
   const a = (await c.execute({ sql: "SELECT id, name, vendor_name, email, phone, role, status, created_at FROM users WHERE id = ?", args: [Number((await params).id) || 0] })).rows[0];
   if (!a || (a.role !== "subadmin" && a.role !== "admin")) notFound();

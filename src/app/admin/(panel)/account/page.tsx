@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Req from "@/components/Req";
 import { toast } from "@/components/Toaster";
 import { toAvatar } from "@/lib/image";
-import { cleanProfile, firstError, validatePasswordChange, validateProfile } from "@/lib/validate";
+import { STAFF_PASSWORD_MIN, cleanProfile, firstError, validatePasswordChange, validateProfile } from "@/lib/validate";
 
 type Msg = { ok: boolean; text: string } | null;
 
@@ -37,7 +37,7 @@ export default function AccountPage() {
   }
   async function savePassword(e: React.FormEvent) {
     e.preventDefault(); setWm(null);
-    const ve = firstError(validatePasswordChange(pw));
+    const ve = firstError(validatePasswordChange(pw, STAFF_PASSWORD_MIN));
     if (ve) { toast.error(ve); return setWm({ ok: false, text: ve }); }
     setBusy(true);
     const r = await fetch("/api/admin/password", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pw) });

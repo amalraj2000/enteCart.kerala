@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { getAdmin, pwTag, setSession } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
-import { firstError, validatePasswordChange } from "@/lib/validate";
+import { STAFF_PASSWORD_MIN, firstError, validatePasswordChange } from "@/lib/validate";
 
 export async function PUT(req: Request) {
   const a = await getAdmin();
@@ -12,7 +12,7 @@ export async function PUT(req: Request) {
   if (!(await rateLimit(`admin-pw:${a.id}`, 5, 600))) return bad("Too many attempts. Try again in a few minutes.", 429);
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
-  const err = firstError(validatePasswordChange(b));
+  const err = firstError(validatePasswordChange(b, STAFF_PASSWORD_MIN));
   if (err) return bad(err);
   const c = await db();
   const row = (await c.execute({ sql: "SELECT password FROM users WHERE id = ?", args: [a.id] })).rows[0];

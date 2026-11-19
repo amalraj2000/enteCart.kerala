@@ -28,9 +28,10 @@ export function validateIdentifier(raw: unknown): string | null {
   if (/^\d+$/.test(v)) return PHONE.test(v) ? null : "Enter a valid 10-digit Indian mobile number";
   return GMAIL.test(v) ? null : "Enter a valid Gmail address (name@gmail.com) or 10-digit phone";
 }
-export function validatePassword(raw: unknown, label = "Password"): string | null {
+export const STAFF_PASSWORD_MIN = 10;
+export function validatePassword(raw: unknown, label = "Password", min = 6): string | null {
   if (typeof raw !== "string" || !raw) return `${label} is required`;
-  if (raw.length < 6) return `${label} must be at least 6 characters`;
+  if (raw.length < min) return `${label} must be at least ${min} characters`;
   if (raw.length > 72) return `${label} must be at most 72 characters`;
   return null;
 }
@@ -45,10 +46,10 @@ export function validateAuth(b: Record<string, unknown>, mode: "login" | "regist
   if (p) e.password = p;
   return e;
 }
-export function validatePasswordChange(b: Record<string, unknown>): Errors {
+export function validatePasswordChange(b: Record<string, unknown>, min = 6): Errors {
   const e: Errors = {};
   if (typeof b.currentPassword !== "string" || !b.currentPassword || b.currentPassword.length > 72) e.currentPassword = "Enter your current password";
-  const n = validatePassword(b.newPassword, "New password");
+  const n = validatePassword(b.newPassword, "New password", min);
   if (n) e.newPassword = n;
   else if (b.newPassword === b.currentPassword) e.newPassword = "New password must be different from the current one";
   if (b.confirmPassword !== b.newPassword) e.confirmPassword = "Passwords do not match";
@@ -144,7 +145,7 @@ export function validateProduct(p: ReturnType<typeof cleanProduct>): Errors {
   else {
     const bad = p.images.findIndex((u) => {
       if (/^\/api\/images\/\d{1,12}$/.test(u)) return false; // an uploaded photo
-      try { const x = new URL(u); return !["http:", "https:"].includes(x.protocol) || u.length > 1000 || /\s/.test(u); } catch { return true; }
+      try { const x = new URL(u); return x.protocol !== "https:" || u.length > 1000 || /\s/.test(u); } catch { return true; }
     });
     if (bad >= 0) e.images = `Photo ${bad + 1} is invalid — please upload it again`;
   }
@@ -163,7 +164,7 @@ export function validateOrderItems(raw: unknown): { items: CartLine[]; error: st
     const qty = typeof it.qty === "number" && Number.isInteger(it.qty) ? it.qty : NaN;
     const size = typeof it.size === "string" ? it.size.trim() : "";
     if (id === null) return { items: [], error: "Invalid product in cart" };
-    if (!(qty >= 1 && qty <= 50)) return { items: [], error: "Quantity must be between 1 and 50" };
+    if (!(qty >= 1 && qty <= 20)) return { items: [], error: "Quantity must be between 1 and 20" };
     if (size.length > 20) return { items: [], error: "Invalid size" };
     const k = `${id}|${size}`;
     const ex = merged.get(k);
@@ -252,7 +253,7 @@ export function validateStaff(v: ReturnType<typeof cleanStaff>): Errors {
   if (!v.identifier) e.identifier = "Email or phone number is required";
   else if (/^\d+$/.test(v.identifier)) { if (!/^\d{10}$/.test(v.identifier)) e.identifier = "Phone number must be exactly 10 digits"; }
   else if (v.identifier.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.identifier)) e.identifier = "Enter a valid email address or 10-digit phone number";
-  const p = validatePassword(v.password); if (p) e.password = p;
+  const p = validatePassword(v.password, "Password", STAFF_PASSWORD_MIN); if (p) e.password = p;
   return e;
 }
 
