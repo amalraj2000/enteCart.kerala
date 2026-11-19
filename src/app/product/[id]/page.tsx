@@ -7,6 +7,7 @@ import { permanentRedirect } from "next/navigation";
 import { isPublicId } from "@/lib/publicId";
 import { discountPct, inr, productImages, type Product } from "@/lib/types";
 import Gallery from "@/components/Gallery";
+import { parseVideo } from "@/lib/video";
 import WishlistButton from "@/components/WishlistButton";
 import BuyPanel from "@/components/BuyPanel";
 import ShareButton from "@/components/ShareButton";
@@ -56,7 +57,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   return (<>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
     <div className="card grid grid-cols-1 gap-8 p-4 md:grid-cols-2 md:p-8">
-      <Gallery images={productImages(p)} alt={p.title} />
+      <Gallery images={productImages(p)} alt={p.title} video={p.video_url ? parseVideo(p.video_url) : null} />
       <div className="min-w-0">
         {p.category_name && <Link href={`/?category=${p.category_id}`} className="mb-2 inline-block rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100">{p.category_name}</Link>}
         <div className="flex items-start justify-between gap-3">

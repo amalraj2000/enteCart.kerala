@@ -6,6 +6,7 @@ export type Product = {
   category_id?: number | null;
   category_name?: string | null;
   status?: string; // "active" | "inactive" — inactive products are hidden from customers
+  video_url?: string; // optional YouTube / Vimeo / direct .mp4 link shown on the product page
   images?: string; // JSON array of URLs; image_url is always the first one
   id: number; title: string; description: string; price: number;
   stock: number; sizes: string; image_url: string;

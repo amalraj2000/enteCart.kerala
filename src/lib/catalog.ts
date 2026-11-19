@@ -71,7 +71,7 @@ export const getProduct = unstable_cache(
             FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.public_id = ? AND p.status = 'active' AND (c.id IS NULL OR c.status = 'active')`, args: [publicId] });
     return r.rows[0] ? plain(r.rows[0]) : null;
   },
-  ["product-v2"], { tags: [TAG], revalidate: 60 },
+  ["product-v3"], { tags: [TAG], revalidate: 60 },
 );
 
 /** Old links (/product/12) → the product's new public id, so shared / indexed / bookmarked links keep working. null = not visible. */

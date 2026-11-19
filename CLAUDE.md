@@ -22,7 +22,7 @@ Kerala e-commerce shop. **Next.js 15 App Router + React 19 + TypeScript + Tailwi
 
 ## Customer features (pages in `src/app`)
 - `/` home: banner slider, category chips, search (`?q`, `?cat`), New Arrivals (14 days) & Best Sellers (≥3 units) sections (toggle in settings), product grid + pagination. Data via `lib/catalog.ts` (`unstable_cache`, 60s, tag `catalog`; `revalidateCatalog()` after admin edits, `revalidateCatalogSoon()` after orders).
-- `/product/[id]`: gallery (up to 8 photos), sizes, discount % (from `original_price`), stock, BuyPanel (add to cart / buy now), wishlist button, "Sold by".
+- `/product/[id]`: optional product video (`products.video_url`: YouTube/Vimeo/direct https .mp4 link, parsed in `lib/video.ts`, shown as the last slide of `components/Gallery.tsx`), gallery (up to 8 photos), sizes, discount % (from `original_price`), stock, BuyPanel (add to cart / buy now), wishlist button, "Sold by".
 - `/cart` (cart in localStorage `ek_cart`, stock re-synced via `/api/stock`), `/checkout` (address + COD or Razorpay online), `/order-success/[id]`.
 - `/orders`, `/orders/[id]`: history, cancel while status `Placed` only (`lib/orderPolicy.ts`), Pay-now retry for unpaid online orders.
 - `/wishlist`, `/account` (profile, avatar, saved address, password change), AuthModal login/register (`components/AuthModal.tsx`, state in `components/Providers.tsx` → `useApp()`).

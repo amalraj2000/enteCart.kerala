@@ -11,7 +11,7 @@ import { toPhoto } from "@/lib/image";
 import { PRODUCT_MAX_IMAGES, PRODUCT_TITLE_MAX, type Errors, cleanProduct, firstError, validateProduct } from "@/lib/validate";
 import { discountPct, inr, productImages, type Category, type Product } from "@/lib/types";
 
-const empty = { title: "", description: "", price: "", original_price: "", stock: "", sizes: "", category_id: "", status: "active", images: [] as string[] };
+const empty = { title: "", description: "", price: "", original_price: "", stock: "", sizes: "", category_id: "", status: "active", video_url: "", images: [] as string[] };
 
 export default function ProductManager({ products, categories, pi, staff, meId, by }: { products: (Product & { editable?: boolean })[]; categories: Category[]; pi: PageInfo; staff: { id: number; name: string }[]; meId: number; by: string }) {
   const router = useRouter();
@@ -22,9 +22,23 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const [vidBusy, setVidBusy] = useState(false);
+  async function uploadVideo(f: File | undefined) {
+    if (!f) return;
+    if (f.size > 4_000_000) return toast.error("Video is too large — max 4 MB (try a short clip, 720p or lower)");
+    if (!/^video\/(mp4|webm)$/.test(f.type)) return toast.error("Only MP4 or WebM videos are allowed");
+    setVidBusy(true);
+    try {
+      const r = await fetch("/api/admin/videos", { method: "POST", headers: { "Content-Type": f.type }, body: f });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.url) return toast.error(d.error || "Video upload failed");
+      setForm((x: any) => ({ ...x, video_url: d.url })); toast.success("Video uploaded — press Save to keep it");
+    } catch { toast.error("Network error while uploading the video"); } finally { setVidBusy(false); if (videoRef.current) videoRef.current.value = ""; }
+  }
 
   const set = (k: string) => (e: React.ChangeEvent<any>) => setForm({ ...form, [k]: e.target.value });
-  function edit(p: Product) { setForm({ ...p, stock_base: p.stock, original_price: p.original_price ? p.original_price : "", category_id: p.category_id ?? "", status: p.status || "active", images: productImages(p) }); setEditing(p.id); setOpen(true); setErrs({}); }
+  function edit(p: Product) { setForm({ ...p, stock_base: p.stock, original_price: p.original_price ? p.original_price : "", category_id: p.category_id ?? "", status: p.status || "active", video_url: p.video_url || "", images: productImages(p) }); setEditing(p.id); setOpen(true); setErrs({}); }
   function add() { setForm(empty); setEditing(null); setOpen(true); setErrs({}); }
 
   const delImg = (i: number) => setForm({ ...form, images: form.images.filter((_: string, k: number) => k !== i) });
@@ -120,6 +134,18 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
             {categories.find((c) => String(c.id) === String(form.category_id))?.status === "inactive" && <p className="mt-1 text-xs text-amber-700">This category is inactive, so the product stays hidden until the category is made active.</p>}
           </div>
           <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-gray-500">Product video — optional: upload a short MP4/WebM (max 4 MB) or paste a YouTube / Vimeo / .mp4 link</label>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <button type="button" className="btn border" disabled={vidBusy} onClick={() => videoRef.current?.click()}>{vidBusy ? "Uploading…" : "Upload video"}</button>
+              {form.video_url && <button type="button" className="btn border text-red-600" onClick={() => setForm({ ...form, video_url: "" })}>Remove video</button>}
+              {form.video_url?.startsWith("/api/videos/") && <span className="text-xs text-green-700">Uploaded video attached</span>}
+              <input ref={videoRef} type="file" accept="video/mp4,video/webm" className="hidden" onChange={(e) => uploadVideo(e.target.files?.[0])} />
+            </div>
+            {form.video_url?.startsWith("/api/videos/") && <video src={form.video_url} controls preload="metadata" className="mb-2 aspect-video w-full max-w-sm rounded-lg bg-black" />}
+            <input className={`input ${errs.video_url ? "!border-red-500" : ""}`} value={form.video_url} onChange={set("video_url")} maxLength={300} placeholder="https://www.youtube.com/watch?v=…" inputMode="url" />
+            <FieldError msg={errs.video_url} />
+          </div>
+          <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold text-gray-500">Product photos — the first one is the main photo</label>
             <div className="flex flex-wrap gap-3">
               {form.images.map((u: string, i: number) => (
@@ -151,7 +177,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
             <FieldError msg={errs.description} />
           </div>
           <div className="flex gap-2 sm:col-span-2">
-            <button className="btn-primary" disabled={busy || uploading > 0}>{busy ? "Saving…" : "Save"}</button>
+            <button className="btn-primary" disabled={busy || uploading > 0 || vidBusy}>{busy ? "Saving…" : "Save"}</button>
             <button type="button" className="btn border" onClick={() => setOpen(false)} disabled={uploading > 0}>Cancel</button>
           </div>
         </form>

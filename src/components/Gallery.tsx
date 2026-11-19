@@ -2,16 +2,18 @@
 import { useRef, useState } from "react";
 import { largeSrc } from "@/lib/imgSrc";
 import Img from "./Img";
+import type { VideoSrc } from "@/lib/video";
 
 /**
  * Flipkart-style product gallery: vertical thumbnail strip on the left (below the image on mobile),
  * big image with hover-zoom, arrows, counter, and swipe on touch screens.
  */
-export default function Gallery({ images, alt }: { images: string[]; alt: string }) {
+export default function Gallery({ images, alt, video }: { images: string[]; alt: string; video?: VideoSrc | null }) {
   const [i, setI] = useState(0);
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
   const touchX = useRef<number | null>(null);
-  const n = images.length;
+  const n = images.length + (video ? 1 : 0); // the video (if any) is the last slide
+  const isVid = !!video && i === images.length;
   const go = (d: number) => setI((x) => (x + d + n) % n);
 
   function onMove(e: React.MouseEvent<HTMLDivElement>) {
@@ -30,31 +32,44 @@ export default function Gallery({ images, alt }: { images: string[]; alt: string
               <Img src={src} alt="" sizes="72px" className="h-full w-full object-cover" />
             </button>
           ))}
+          {video && (
+            <button type="button" aria-label="Product video" aria-current={isVid} onClick={() => setI(images.length)}
+              className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 bg-black md:h-[4.5rem] md:w-[4.5rem] ${isVid ? "border-brand-600" : "border-gray-200 opacity-80 hover:opacity-100"}`}>
+              {images[0] && <Img src={images[0]} alt="" sizes="72px" className="h-full w-full object-cover opacity-70" />}
+              <span className="absolute inset-0 flex items-center justify-center"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs text-gray-900">▶</span></span>
+            </button>
+          )}
         </div>
       )}
 
       <div className="relative min-w-0 flex-1">
         <div
-          className="relative aspect-square w-full cursor-zoom-in overflow-hidden rounded-xl border bg-white"
-          onMouseMove={onMove} onMouseLeave={() => setZoom(null)}
+          className={`relative aspect-square w-full overflow-hidden rounded-xl border bg-white ${isVid ? "" : "cursor-zoom-in"}`}
+          onMouseMove={isVid ? undefined : onMove} onMouseLeave={() => setZoom(null)}
           onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
           onTouchEnd={(e) => {
-            if (touchX.current === null || n < 2) return;
+            if (touchX.current === null || n < 2 || isVid) return; // no swipe on the video (it has its own controls)
             const dx = e.changedTouches[0].clientX - touchX.current;
             if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); // swipe
             touchX.current = null;
           }}>
-          <Img src={images[i] || ""} alt={alt} priority sizes="(max-width: 768px) 100vw, 560px"
-            className="h-full w-full object-contain transition-transform duration-150 ease-out"
-          />
-          {zoom && images[i] && (
+          {isVid && video ? (
+            video.kind === "file"
+              ? <video key={video.embed} src={video.embed} controls playsInline autoPlay muted preload="metadata" className="h-full w-full bg-black object-contain" />
+              : <iframe src={video.embed} title={`${alt} video`} allow="fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className="h-full w-full bg-black" />
+          ) : (
+            <Img src={images[i] || ""} alt={alt} priority sizes="(max-width: 768px) 100vw, 560px"
+              className="h-full w-full object-contain transition-transform duration-150 ease-out"
+            />
+          )}
+          {!isVid && zoom && images[i] && (
             // magnified copy follows the cursor
             <div className="pointer-events-none absolute inset-0 hidden bg-white md:block" style={{ backgroundImage: `url("${largeSrc(images[i])}")`, backgroundSize: "250%", backgroundPosition: `${zoom.x}% ${zoom.y}%`, backgroundRepeat: "no-repeat" }} />
           )}
           {n > 1 && (
             <>
-              <button type="button" aria-label="Previous photo" onClick={() => go(-1)} className="absolute left-2 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-white/90 text-2xl shadow hover:bg-white">‹</button>
-              <button type="button" aria-label="Next photo" onClick={() => go(1)} className="absolute right-2 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-white/90 text-2xl shadow hover:bg-white">›</button>
+              <button type="button" aria-label="Previous" onClick={() => go(-1)} className="absolute left-2 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-white/90 text-2xl shadow hover:bg-white">‹</button>
+              <button type="button" aria-label="Next" onClick={() => go(1)} className="absolute right-2 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-white/90 text-2xl shadow hover:bg-white">›</button>
               <span className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">{i + 1} / {n}</span>
             </>
           )}

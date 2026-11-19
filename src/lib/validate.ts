@@ -111,6 +111,7 @@ export function validateAddress(a: Address): Errors {
 // ---------- products
 export const PRODUCT_TITLE_MAX = 100;
 import { cleanStatus } from "./visibility";
+import { parseVideo } from "./video";
 export const cleanProduct = (b: Record<string, unknown>) => ({
   title: str(b.title).replace(/\s+/g, " "),
   description: typeof b.description === "string" ? b.description.trim() : "",
@@ -120,6 +121,7 @@ export const cleanProduct = (b: Record<string, unknown>) => ({
   sizes: [...new Set(str(b.sizes).split(",").map((s) => s.trim()).filter(Boolean))].join(","),
   status: cleanStatus(b.status),
   category_id: b.category_id === "" || b.category_id == null ? null : num(b.category_id),
+  video_url: str(b.video_url),
   images: [...new Set((Array.isArray(b.images) ? b.images : b.image_url ? [b.image_url] : []).map(str).filter(Boolean))] as string[],
 });
 export const PRODUCT_MAX_IMAGES = 8;
@@ -140,6 +142,7 @@ export function validateProduct(p: ReturnType<typeof cleanProduct>): Errors {
     if (parts.length > 15) e.sizes = "At most 15 sizes";
     else if (parts.some((s) => !SIZE.test(s))) e.sizes = "Sizes: comma separated, e.g. S,M,L,XL (letters/numbers, max 20 chars each)";
   }
+  if (p.video_url && (p.video_url.length > 300 || !parseVideo(p.video_url))) e.video_url = "Enter a valid https link to a YouTube or Vimeo video, or a direct .mp4 / .webm file";
   if (p.category_id !== null && !(Number.isInteger(p.category_id) && p.category_id > 0)) e.category_id = "Choose a valid category";
   if (p.images.length > PRODUCT_MAX_IMAGES) e.images = `At most ${PRODUCT_MAX_IMAGES} photos`;
   else {

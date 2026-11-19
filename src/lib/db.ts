@@ -115,6 +115,13 @@ const BASE_SCHEMA = [
     data TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // Optional short product video uploaded by staff (≤4 MB), served by /api/videos/[id]; products.video_url holds '/api/videos/<id>'.
+  `CREATE TABLE IF NOT EXISTS product_videos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mime TEXT NOT NULL,
+    data BLOB NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   // Online payments (Razorpay): one row per payment attempt. Only ids / amount / method — NEVER card numbers, CVV or expiry.
   `CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -284,7 +291,7 @@ export function db(): Promise<Client> {
   return ready.then(getClient);
 }
 
-const SCHEMA_VERSION = "2026-11-pubid-2";
+const SCHEMA_VERSION = "2026-11-video-2";
 
 async function setupSchema(c: Client) {
       await migrateToRelational(c);
@@ -297,6 +304,7 @@ async function setupSchema(c: Client) {
       await c.execute("ALTER TABLE categories ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE banners ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE products ADD COLUMN original_price REAL NOT NULL DEFAULT 0").catch(() => {}); // already exists (original / MRP price; 0 = no discount)
+      await c.execute("ALTER TABLE products ADD COLUMN video_url TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists (optional product video link)
       // Non-guessable product link id (/product/<public_id>). Existing products get one now; new ones get it when they are created.
       await c.execute("ALTER TABLE products ADD COLUMN public_id TEXT").catch(() => {}); // already exists
       await c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_public_id ON products(public_id)");
