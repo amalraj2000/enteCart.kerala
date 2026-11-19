@@ -5,7 +5,7 @@ import { getUser } from "@/lib/session";
 import { withImages } from "@/lib/orderItems";
 import { bad, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
-import { parseId } from "@/lib/validate";
+import { resolveOwnOrder } from "@/lib/orderRef";
 import { CANCELLABLE_STATUS } from "@/lib/orderPolicy";
 import { reconcilePayment } from "@/lib/reconcilePayment";
 import { refundOrder } from "@/lib/refund";
@@ -15,9 +15,10 @@ export const dynamic = "force-dynamic";
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
   if (!user) return bad("Login required", 401);
-  const id = parseId((await params).id);
-  if (!id) return bad("Order not found", 404);
   const c = await db();
+  const own = await resolveOwnOrder(c, user.id, (await params).id);
+  if (!own) return bad("Order not found", 404);
+  const id = own.id;
   // user_id is part of the WHERE clause: customers can never read someone else's order.
   const r = await c.execute({ sql: "SELECT * FROM orders WHERE id = ? AND user_id = ?", args: [id, user.id] });
   if (!r.rows[0]) return bad("Order not found", 404);
@@ -34,12 +35,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
   if (!user) return bad("Login required", 401);
-  const id = parseId((await params).id);
-  if (!id) return bad("Order not found", 404);
   const b = await readJson(req);
   if (!b || b.action !== "cancel") return bad("Invalid request");
 
   const c = await db();
+  const own = await resolveOwnOrder(c, user.id, (await params).id);
+  if (!own) return bad("Order not found", 404);
+  const id = own.id;
   // An online order may have been paid without our browser hearing about it — settle that first so we know whether a refund is due.
   const pay = (await c.execute({ sql: "SELECT payment_method FROM orders WHERE id = ? AND user_id = ?", args: [id, user.id] })).rows[0];
   const online = pay?.payment_method === "online";

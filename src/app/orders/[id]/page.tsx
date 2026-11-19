@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useApp } from "@/components/Providers";
 import OrderDetail from "@/components/OrderDetail";
 import PayNow from "@/components/PayNow";
@@ -11,10 +12,11 @@ import type { FullOrder } from "@/lib/orderItems";
 
 export default function MyOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const { user, authReady, openAuth } = useApp();
   const [o, setO] = useState<FullOrder | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-  const load = () => fetch(`/api/orders/${id}`).then((r) => r.json()).then((d) => setO(d.order || null));
+  const load = () => fetch(`/api/orders/${id}`).then((r) => r.json()).then((d) => { setO(d.order || null); if (d.order?.public_id && d.order.public_id !== id) router.replace(`/orders/${d.order.public_id}`); }); // old numeric link → opaque address
   useEffect(() => { if (user) load(); }, [user, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function cancel() {

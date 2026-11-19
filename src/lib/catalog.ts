@@ -20,7 +20,7 @@ export const revalidateCatalogSoon = () => { if (Date.now() - lastSoon >= 5000) 
 
 const NEW_DAYS = 14;        // a product is "New" for this many days after being added
 const BEST_MIN_UNITS = 3;   // units sold before a product earns the "Best seller" badge
-const COLS = "p.id, p.title, p.price, p.original_price, p.stock, p.sizes, p.image_url, p.images, p.category_id, p.created_at"; // cards don't need the (long) description
+const COLS = "p.id, p.public_id, p.title, p.price, p.original_price, p.stock, p.sizes, p.image_url, p.images, p.category_id, p.created_at"; // cards don't need the (long) description
 const plain = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
 export const getHomeData = unstable_cache(
@@ -65,11 +65,22 @@ export const getHomeData = unstable_cache(
 );
 
 export const getProduct = unstable_cache(
-  async (id: number) => {
+  async (publicId: string) => {
     const c = await db();
     const r = await c.execute({ sql: `SELECT p.*, c.name AS category_name
-            FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ? AND p.status = 'active' AND (c.id IS NULL OR c.status = 'active')`, args: [id] });
+            FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.public_id = ? AND p.status = 'active' AND (c.id IS NULL OR c.status = 'active')`, args: [publicId] });
     return r.rows[0] ? plain(r.rows[0]) : null;
   },
-  ["product-v1"], { tags: [TAG], revalidate: 60 },
+  ["product-v2"], { tags: [TAG], revalidate: 60 },
 );
+
+/** Old links (/product/12) → the product's new public id, so shared / indexed / bookmarked links keep working. null = not visible. */
+export const publicIdForLegacyId = unstable_cache(
+  async (id: number) => {
+    const c = await db();
+    const r = await c.execute({ sql: `SELECT p.public_id FROM products p ${CATEGORY_JOIN} WHERE p.id = ? AND ${VISIBLE}`, args: [id] });
+    return r.rows[0]?.public_id ? String(r.rows[0].public_id) : null;
+  },
+  ["product-legacy-v1"], { tags: [TAG], revalidate: 60 },
+);
+

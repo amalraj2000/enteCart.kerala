@@ -31,7 +31,7 @@ export default function CartPage() {
           <div key={`${i.id}|${i.size}`} className="card flex gap-4 p-3">
             <Img src={i.image_url} alt={i.title} sizes="96px" className="h-24 w-24 rounded-lg object-cover" />
             <div className="min-w-0 flex-1">
-              <Link href={`/product/${i.id}`} className="font-medium hover:underline">{i.title}</Link>
+              <Link href={`/product/${i.pid || i.id}`} className="font-medium hover:underline">{i.title}</Link>
               {i.size && <p className="text-xs text-gray-500">Size: {i.size}</p>}
               {i.stock <= 0 && <p className="text-xs font-semibold text-red-600">{i.gone ? "No longer available" : "Out of stock"} — remove it to continue</p>}
               {i.stock > 0 && i.stock < 10 && <p className="text-xs font-medium text-amber-600">Only {i.stock} left</p>}

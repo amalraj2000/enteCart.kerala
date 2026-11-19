@@ -1,5 +1,6 @@
 import { createClient, type Client } from "@libsql/client";
 import bcrypt from "bcryptjs";
+import { newPublicId } from "./publicId";
 
 let client: Client | null = null;
 let ready: Promise<void> | null = null;
@@ -283,7 +284,7 @@ export function db(): Promise<Client> {
   return ready.then(getClient);
 }
 
-const SCHEMA_VERSION = "2026-11-mrp-1";
+const SCHEMA_VERSION = "2026-11-pubid-2";
 
 async function setupSchema(c: Client) {
       await migrateToRelational(c);
@@ -296,6 +297,12 @@ async function setupSchema(c: Client) {
       await c.execute("ALTER TABLE categories ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE banners ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE products ADD COLUMN original_price REAL NOT NULL DEFAULT 0").catch(() => {}); // already exists (original / MRP price; 0 = no discount)
+      // Non-guessable product link id (/product/<public_id>). Existing products get one now; new ones get it when they are created.
+      await c.execute("ALTER TABLE products ADD COLUMN public_id TEXT").catch(() => {}); // already exists
+      await c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_public_id ON products(public_id)");
+      // Same for orders: customers' links are /orders/<public_id> and /order-success/<public_id>.
+      await c.execute("ALTER TABLE orders ADD COLUMN public_id TEXT").catch(() => {}); // already exists
+      await c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_public_id ON orders(public_id)");
       // Active / inactive switch for products and categories (inactive = hidden from customers).
       await c.execute("ALTER TABLE products ADD COLUMN status TEXT NOT NULL DEFAULT 'active'").catch(() => {}); // already exists
       await c.execute("ALTER TABLE categories ADD COLUMN status TEXT NOT NULL DEFAULT 'active'").catch(() => {}); // already exists
@@ -340,6 +347,10 @@ async function setupSchema(c: Client) {
       const owned2 = await c.execute("INSERT OR IGNORE INTO meta (key, value) VALUES ('owners_cat_banner', 'done')");
       if (owned2.rowsAffected === 1)
         await c.batch(["categories", "banners"].map((t) => ({ sql: `UPDATE ${t} SET created_by = (SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1) WHERE created_by IS NULL`, args: [] })), "write");
+      const noId = (await c.execute("SELECT id FROM products WHERE public_id IS NULL OR public_id = ''")).rows; // includes the sample products seeded above
+      for (const r of noId) await c.execute({ sql: "UPDATE products SET public_id = ? WHERE id = ? AND (public_id IS NULL OR public_id = '')", args: [newPublicId(), Number(r.id)] }).catch(() => {}); // a (1-in-10^14) clash just retries on the next start
+      const noOrderId = (await c.execute("SELECT id FROM orders WHERE public_id IS NULL OR public_id = ''")).rows;
+      for (const r of noOrderId) await c.execute({ sql: "UPDATE orders SET public_id = ? WHERE id = ? AND (public_id IS NULL OR public_id = '')", args: [newPublicId(), Number(r.id)] }).catch(() => {});
       await c.execute({ sql: "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_applied', ?)", args: [SCHEMA_VERSION] }); // last step: only set when everything above succeeded
 }
 

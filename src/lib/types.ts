@@ -1,5 +1,6 @@
 export type Category = { id: number; name: string; count?: number; status?: string };
 export type Product = {
+  public_id?: string; // opaque id used in the product's link (/product/<public_id>)
   created_by?: number | null;
   added_by_name?: string | null; // admin who added it (joined for the admin product list)
   category_id?: number | null;
@@ -10,7 +11,7 @@ export type Product = {
   stock: number; sizes: string; image_url: string;
   original_price?: number; // MRP / original price (0 = none); `price` is the selling price
 };
-export type CartItem = { id: number; title: string; price: number; image_url: string; size: string; qty: number; stock: number; original_price?: number; gone?: boolean };
+export type CartItem = { id: number; title: string; price: number; image_url: string; size: string; qty: number; stock: number; original_price?: number; gone?: boolean; pid?: string };
 export const ORDER_STATUSES = ["Placed", "Confirmed", "Shipped", "Delivered", "Cancelled"];
 /** Discount % between the original (MRP) and selling price, rounded; 0 when there is no real discount. Always calculated, never stored. */
 export const discountPct = (price: number, original?: number | null) => {

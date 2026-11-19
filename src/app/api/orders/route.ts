@@ -7,6 +7,7 @@ import { withImages } from "@/lib/orderItems";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import { bad, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
+import { newPublicId } from "@/lib/publicId";
 import { expireUnpaidOrders } from "@/lib/expireUnpaid";
 import { razorpayConfigured } from "@/lib/razorpay";
 import { onlinePaymentsEnabled } from "@/lib/settings";
@@ -103,15 +104,16 @@ export async function POST(req: Request) {
   //    Overselling is impossible: each UPDATE only succeeds while stock >= qty, and the check right after it raises an error
   //    when it didn't, which rolls back the WHOLE batch — nothing is reserved, nothing needs "undoing".
   //    json('!') is just a deliberate error: invalid JSON → "malformed JSON".
+  const publicId = newPublicId();
   const stmts: { sql: string; args: (string | number | null)[] }[] = [];
   for (const [id, qty] of need) {
     stmts.push({ sql: "UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?", args: [qty, id, qty] });
     stmts.push({ sql: "SELECT CASE WHEN changes() = 1 THEN 1 ELSE json('!') END", args: [] });
   }
   stmts.push({
-    sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total, payment_method, payment_status)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-    args: [user.id, null, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total, online ? "online" : "cod", online ? "Unpaid" : "Pending"],
+    sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total, payment_method, payment_status, public_id)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    args: [user.id, null, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total, online ? "online" : "cod", online ? "Unpaid" : "Pending", publicId],
   });
   // Writers are serialised by SQLite, so inside this one transaction this user's newest order IS the one just inserted.
   const newest = "(SELECT id FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 1)";
@@ -128,7 +130,7 @@ export async function POST(req: Request) {
     after(() => linkAddress(c, user.id, orderId, addr));
     if (!online) after(() => notifyNewOrder({ id: orderId, adminUrl: `${new URL(req.url).origin}/admin/orders/${orderId}` }));
     revalidateCatalogSoon();
-    return NextResponse.json({ id: orderId, total });
+    return NextResponse.json({ id: orderId, pid: publicId, total });
   } catch {
     // The batch rolled back as a whole. Most likely somebody else took the last items a moment ago — say which one.
     const now = (await c.execute({ sql: `SELECT id, title, stock FROM products WHERE id IN (${ids.map(() => "?").join(",")})`, args: ids }).catch(() => null))?.rows ?? [];

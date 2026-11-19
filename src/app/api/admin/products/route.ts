@@ -3,6 +3,7 @@ import { revalidateCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getAdmin } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
+import { newPublicId } from "@/lib/publicId";
 import { categoryExists, missingUploads } from "@/lib/productImages";
 import { cleanProduct, firstError, validateProduct } from "@/lib/validate";
 
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   if (miss) return bad(miss);
   if (p.category_id !== null && !(await categoryExists(p.category_id))) return bad("That category no longer exists");
   const c = await db();
-  const r = await c.execute({ sql: "INSERT INTO products (title, description, price, original_price, stock, sizes, image_url, images, category_id, status, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now'))", args: [p.title, p.description, p.price, p.original_price, p.stock, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, p.status, me.id] });
+  const r = await c.execute({ sql: "INSERT INTO products (title, description, price, original_price, stock, sizes, image_url, images, category_id, status, created_by, public_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))", args: [p.title, p.description, p.price, p.original_price, p.stock, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, p.status, me.id, newPublicId()] });
   revalidateCatalog();
   return NextResponse.json({ id: Number(r.lastInsertRowid) });
 }

@@ -73,7 +73,7 @@ function Checkout() {
   // Page refreshed / reopened while an online payment was in progress: the order already exists (unpaid), so go to it
   // (its page has "Pay now") instead of showing an empty checkout. Never place a second order.
   useEffect(() => {
-    try { const id = sessionStorage.getItem("ek_pay_order"); if (id && /^\d+$/.test(id)) { sessionStorage.removeItem("ek_pay_order"); router.replace(`/orders/${id}`); } } catch {}
+    try { const id = sessionStorage.getItem("ek_pay_order"); if (id && /^[a-z0-9]{10}$/.test(id)) { sessionStorage.removeItem("ek_pay_order"); router.replace(`/orders/${id}`); } } catch {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // While the order request or the payment window is running, warn before a refresh/close.
   useEffect(() => {
@@ -147,10 +147,10 @@ function Checkout() {
     // The order exists now (stock reserved). Buy Now leaves the cart untouched; a normal checkout empties it.
     const finish = () => { if (new URLSearchParams(location.search).get("buynow")) resetBuyNow(); else clearCart(); };
     if (method === "cod") {
-      setBusy(false); toast.success("Order placed successfully!"); finish(); return router.replace(`/order-success/${d.id}`);
+      setBusy(false); toast.success("Order placed successfully!"); finish(); return router.replace(`/order-success/${d.pid}`);
     }
     const clearPending = () => { try { sessionStorage.removeItem("ek_pay_order"); } catch {} };
-    try { sessionStorage.setItem("ek_pay_order", String(d.id)); } catch {}
+    try { sessionStorage.setItem("ek_pay_order", String(d.pid)); } catch {}
     try {
       finish(); // the order exists; from here the customer is either paying or can resume from My Orders
       await openPayment(d.id, { name: clean.customer_name, contact: clean.phone }, {
@@ -160,15 +160,15 @@ function Checkout() {
           const ok = await verifyPayment(d.id, res);
           if (ok) toast.success("Payment successful!"); else toast.error("We're still confirming your payment. Check My Orders in a minute.");
           setVerifying(false);
-          router.replace(ok ? `/order-success/${d.id}` : `/orders/${d.id}`);
+          router.replace(ok ? `/order-success/${d.pid}` : `/orders/${d.pid}`);
         },
-        onDismiss: () => { clearPending(); toast.error("Payment not completed. Your order is saved — you can pay from My Orders."); router.replace(`/orders/${d.id}`); },
+        onDismiss: () => { clearPending(); toast.error("Payment not completed. Your order is saved — you can pay from My Orders."); router.replace(`/orders/${d.pid}`); },
         onFailed: () => toast.error("Payment failed. You can try again from your order page."),
       });
     } catch (err) {
       clearPending();
       toast.error(err instanceof Error ? err.message : "Could not start payment");
-      router.replace(`/orders/${d.id}`);
+      router.replace(`/orders/${d.pid}`);
     } finally { setBusy(false); }
   }
 

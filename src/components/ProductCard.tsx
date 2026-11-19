@@ -18,7 +18,7 @@ function badges(p: CardProduct): { text: string; cls: string }[] {
 export default function ProductCard({ p, priority = false }: { p: CardProduct; priority?: boolean }) {
   return (
     <div className="card group relative overflow-hidden transition hover:shadow-md">
-      <Link href={`/product/${p.id}`} className="block">
+      <Link href={`/product/${p.public_id || p.id}`} className="block">
         <div className="relative">
           <CardSlideshow images={productImages(p)} alt={p.title} priority={priority} />
           <div className="pointer-events-none absolute left-2 top-2 flex flex-col items-start gap-1">

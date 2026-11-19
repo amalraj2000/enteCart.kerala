@@ -21,7 +21,7 @@ export default function MyOrders() {
     <div className="space-y-3">
       <h1 className="text-xl font-bold">My Orders</h1>
       {orders.length === 0 && <p className="text-gray-500">You haven't placed any orders yet.</p>}
-      {orders.map((o) => <OrderRow key={o.id} o={o} href={`/orders/${o.id}`} />)}
+      {orders.map((o) => <OrderRow key={o.id} o={o} href={`/orders/${o.public_id || o.id}`} />)}
       <Pagination page={pg.page} totalPages={pg.totalPages} total={pg.total} onPage={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
     </div>
   );
