@@ -6,6 +6,8 @@ import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
 import { inr } from "@/lib/types";
 import Pagination from "@/components/Pagination";
 import RefundButton from "./RefundButton";
+import OnlineToggle from "./OnlineToggle";
+import { onlinePaymentsEnabled } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 const FILTERS = ["All", "Paid", "Refund due", "Refunded", "Not completed"] as const;
@@ -30,6 +32,7 @@ export default async function Payments({ searchParams }: { searchParams: Promise
   return (
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold">Online payments</h1><p className="text-sm text-gray-500">Razorpay transactions. Card numbers are never stored — only ids, amount and payment method.</p></div>
+      <OnlineToggle enabled={await onlinePaymentsEnabled()} />
       <div className="grid gap-3 sm:grid-cols-3">
         {([["Collected (not refunded)", Number(sums.paid)], ["Refund due (cancelled orders)", Number(sums.due)], ["Refunded", Number(sums.refunded)]] as const).map(([l, v]) => (
           <div key={l} className="card p-4"><p className="text-xs text-gray-500">{l}</p><p className="text-lg font-bold text-brand-700">{inr(v)}</p></div>

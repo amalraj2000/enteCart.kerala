@@ -12,3 +12,15 @@ export async function getSettings(): Promise<Settings> {
   const m = new Map(rows.map((r) => [String(r.key), String(r.value)]));
   return Object.fromEntries(SETTING_KEYS.map((k) => [k, m.get(k) ?? ((TOGGLE_KEYS as readonly string[]).includes(k) ? "1" : "")])) as Settings;
 }
+
+/**
+ * Owner's switch for ONLINE payment at checkout (Admin → Payments). Stored in `settings` as "1"/"0"; missing = ON.
+ * Deliberately not part of SETTING_KEYS, so saving the shop-details form can never flip it.
+ * It only affects NEW orders — customers with an existing unpaid online order can still pay it.
+ */
+export const ONLINE_PAYMENTS_KEY = "online_payments";
+export async function onlinePaymentsEnabled(): Promise<boolean> {
+  const c = await db();
+  const r = (await c.execute({ sql: "SELECT value FROM settings WHERE key = ?", args: [ONLINE_PAYMENTS_KEY] })).rows[0];
+  return String(r?.value ?? "1") !== "0";
+}

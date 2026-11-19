@@ -49,6 +49,8 @@ function Checkout() {
   const placing = useRef(false);
   const [method, setMethod] = useState<"cod" | "online">("cod");
   const [loaded, setLoaded] = useState(false);
+  const [onlineOk, setOnlineOk] = useState(false); // owner's switch (Admin → Payments) + Razorpay configured
+  useEffect(() => { fetch("/api/payments/status", { cache: "no-store" }).then((r) => r.json()).then((d) => { setOnlineOk(!!d.online); if (!d.online) setMethod("cod"); }).catch(() => {}); }, []);
 
   // Prefill: name from the account, everything else from the saved address / most recent order.
   useEffect(() => {
@@ -245,7 +247,7 @@ function Checkout() {
                   {([
                     ["online", "💳", "Pay Online", "UPI, cards, netbanking, wallets — secured by Razorpay"],
                     ["cod", "💵", "Cash on Delivery", "Pay in cash when your order arrives"],
-                  ] as const).map(([k, icon, t, sub]) => (
+                  ] as const).filter(([k]) => k !== "online" || onlineOk).map(([k, icon, t, sub]) => (
                     <label key={k} className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition ${method === k ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-brand-200"}`}>
                       <span className="text-2xl" aria-hidden>{icon}</span>
                       <span className="min-w-0 flex-1"><span className="block font-semibold">{t}</span><span className="block text-xs text-gray-600">{sub}</span></span>

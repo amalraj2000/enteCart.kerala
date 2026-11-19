@@ -9,6 +9,7 @@ import { bad, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
 import { expireUnpaidOrders } from "@/lib/expireUnpaid";
 import { razorpayConfigured } from "@/lib/razorpay";
+import { onlinePaymentsEnabled } from "@/lib/settings";
 import { CATEGORY_JOIN, VISIBLE } from "@/lib/visibility";
 import { getSavedAddress, sameAddress } from "@/lib/addresses";
 import { cleanAddress, firstError, validateAddress, validateOrderItems } from "@/lib/validate";
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
 
   const online = b.payment_method === "online";
   if (online && !razorpayConfigured()) return bad("Online payment is not available right now. Please choose Cash on Delivery.", 503);
+  if (online && !(await onlinePaymentsEnabled())) return bad("Online payment is not available right now. Please choose Cash on Delivery.", 503); // switched off by the owner
   const addr = cleanAddress(b);
   const aerr = firstError(validateAddress(addr));
   if (aerr) return bad(aerr);
