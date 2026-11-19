@@ -66,12 +66,6 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
     toast.success(editing ? "Product updated" : "Product added");
     setOpen(false); router.refresh();
   }
-  async function toggle(p: Product) {
-    const next = p.status === "inactive" ? "active" : "inactive";
-    const r = await fetch(`/api/admin/products/${p.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...p, images: productImages(p), status: next }) });
-    r.ok ? toast.success(next === "active" ? "Product is now visible" : "Product hidden from customers") : toast.error((await r.json().catch(() => ({}))).error || "Could not change status");
-    router.refresh();
-  }
   async function del(p: Product) {
     if (!confirm(`Delete "${p.title}"?`)) return;
     const r = await fetch(`/api/admin/products/${p.id}`, { method: "DELETE" });
@@ -191,7 +185,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
             </div>
             {p.editable === false
               ? <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Added by another admin">View only</span>
-              : <div className="flex gap-2"><button className="btn border !py-1" onClick={() => toggle(p)}>{p.status === "inactive" ? "Activate" : "Deactivate"}</button><button className="btn-outline !py-1" onClick={() => edit(p)}>Edit</button>
+              : <div className="flex gap-2"><button className="btn-outline !py-1" onClick={() => edit(p)}>Edit</button>
             <button className="btn-danger !py-1" onClick={() => del(p)}>Delete</button></div>}
           </div>
         ))}

@@ -1,6 +1,6 @@
 import type { Client } from "@libsql/client";
 import { reconcilePayment } from "@/lib/reconcilePayment";
-import { revalidateCatalog } from "@/lib/catalog";
+import { revalidateCatalogSoon } from "@/lib/catalog";
 import { restockOrder } from "@/lib/orderStock";
 
 export const UNPAID_MINUTES = 30;
@@ -10,7 +10,11 @@ export const UNPAID_MINUTES = 30;
  * UNPAID_MINUTES — otherwise anyone could lock up inventory by abandoning payments. Before cancelling, ask Razorpay once more
  * (the customer may have paid without our browser hearing about it); only still-unpaid orders are cancelled.
  */
+let lastRun = 0;
 export async function expireUnpaidOrders(c: Client) {
+  // Housekeeping, not per-order work: at most once a minute per server instance, so a rush of orders doesn't each pay for it.
+  if (Date.now() - lastRun < 60_000) return;
+  lastRun = Date.now();
   try {
     const rows = (await c.execute({
       sql: `SELECT id FROM orders WHERE payment_method = 'online' AND payment_status = 'Unpaid' AND status = 'Placed'
@@ -20,7 +24,7 @@ export async function expireUnpaidOrders(c: Client) {
       const id = Number(r.id);
       if ((await reconcilePayment(c, id)) !== "Unpaid") continue; // it was paid after all
       const u = await c.execute({ sql: "UPDATE orders SET status = 'Cancelled' WHERE id = ? AND payment_status = 'Unpaid' AND status = 'Placed'", args: [id] });
-      if (u.rowsAffected === 1) { await restockOrder(c, id); revalidateCatalog(); }
+      if (u.rowsAffected === 1) { await restockOrder(c, id); revalidateCatalogSoon(); }
     }
   } catch { /* housekeeping must never break the request that triggered it */ }
 }

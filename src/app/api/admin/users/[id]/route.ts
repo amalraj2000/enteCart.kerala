@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAdmin } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
-import { parseId, validateStatus } from "@/lib/validate";
+import { cleanAccount, firstError, parseId, validateAccount, validateStatus } from "@/lib/validate";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -15,24 +15,42 @@ async function guard(id: number) {
   return null;
 }
 
+/** PATCH { status } (any staff, sub admins: only "inactive")  ·  PATCH { name, email, phone, status? } (super admin: edit the account). */
 export async function PATCH(req: Request, { params }: Ctx) {
   const me = await getAdmin();
   if (!me) return bad("Unauthorized", 401);
   const id = parseId((await params).id);
   if (!id) return bad("Invalid user id");
   const b = await readJson(req);
-  if (!b || !validateStatus(b.status, ["active", "inactive", "blocked"])) return bad("Invalid status");
+  if (!b) return bad("Invalid request");
+  const editsDetails = "name" in b || "email" in b || "phone" in b;
+  if ("status" in b && !validateStatus(b.status, ["active", "inactive", "blocked"])) return bad("Invalid status");
+  if (!editsDetails && !("status" in b)) return bad("Nothing to update");
   const g = await guard(id);
   if (g) return g;
   const c = await db();
+
   if (me.role === "subadmin") {
-    // A sub admin may only deactivate an active customer: no activating, blocking or un-blocking.
-    if (b.status !== "inactive") return bad("Sub admins can only make users inactive", 403);
+    // A sub admin may only deactivate an active customer: no editing, activating, blocking or un-blocking.
+    if (editsDetails || b.status !== "inactive") return bad("Sub admins can only make users inactive", 403);
     const r = await c.execute({ sql: "UPDATE users SET status = 'inactive' WHERE id = ? AND role = 'user' AND status = 'active'", args: [id] });
     if (r.rowsAffected !== 1) return bad("Only active users can be made inactive", 409);
     return NextResponse.json({ ok: true });
   }
-  await c.execute({ sql: "UPDATE users SET status = ? WHERE id = ? AND role = 'user'", args: [b.status as string, id] });
+
+  const sets: string[] = [], args: (string | number | null)[] = [];
+  if (editsDetails) {
+    const v = cleanAccount(b), err = firstError(validateAccount(v, { nameRequired: false, vendor: false }));
+    if (err) return bad(err);
+    // email and phone are each the login for exactly one account
+    if (v.email && (await c.execute({ sql: "SELECT 1 FROM users WHERE email = ? AND id != ?", args: [v.email, id] })).rows.length) return bad("That email is already used by another account", 409);
+    if (v.phone && (await c.execute({ sql: "SELECT 1 FROM users WHERE phone = ? AND id != ?", args: [v.phone, id] })).rows.length) return bad("That phone number is already used by another account", 409);
+    sets.push("name = ?", "email = ?", "phone = ?"); args.push(v.name, v.email || null, v.phone || null);
+  }
+  if ("status" in b) { sets.push("status = ?"); args.push(b.status as string); }
+  try {
+    await c.execute({ sql: `UPDATE users SET ${sets.join(", ")} WHERE id = ? AND role = 'user'`, args: [...args, id] });
+  } catch { return bad("That email or phone number is already used by another account", 409); }
   return NextResponse.json({ ok: true });
 }
 

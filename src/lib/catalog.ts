@@ -13,6 +13,11 @@ import type { BannerData } from "@/components/BannerSlider";
 const TAG = "catalog";
 export const revalidateCatalog = () => { try { revalidateTag(TAG); } catch { /* outside a request: harmless, the 60 s expiry still applies */ } };
 
+let lastSoon = 0;
+/** For customer-driven stock changes (orders/cancels). During a rush, purging the cache on every order would send every visitor
+ *  back to the database, so it is done at most once every 5 s per instance (the 60 s expiry covers the rest; checkout always checks live stock). */
+export const revalidateCatalogSoon = () => { if (Date.now() - lastSoon >= 5000) { lastSoon = Date.now(); revalidateCatalog(); } };
+
 const NEW_DAYS = 14;        // a product is "New" for this many days after being added
 const BEST_MIN_UNITS = 3;   // units sold before a product earns the "Best seller" badge
 const COLS = "p.id, p.title, p.price, p.original_price, p.stock, p.sizes, p.image_url, p.images, p.category_id, p.created_at"; // cards don't need the (long) description

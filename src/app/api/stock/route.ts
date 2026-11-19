@@ -15,5 +15,7 @@ export async function GET(req: Request) {
   const r = await c.execute({ sql: `SELECT p.id, CASE WHEN ${VISIBLE} THEN p.stock ELSE 0 END AS stock FROM products p ${CATEGORY_JOIN} WHERE p.id IN (${ids.map(() => "?").join(",")})`, args: ids });
   const stock: Record<string, number> = Object.fromEntries(ids.map((i) => [String(i), 0])); // a deleted product counts as 0
   for (const row of r.rows) stock[String(row.id)] = Number(row.stock);
-  return NextResponse.json({ stock });
+  // Shared by every visitor for a few seconds: a thousand people watching the same product cost one database read, not a thousand.
+  // Display only — the order API always checks live stock.
+  return NextResponse.json({ stock }, { headers: { "Cache-Control": "public, s-maxage=5, stale-while-revalidate=15" } });
 }

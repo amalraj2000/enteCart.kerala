@@ -255,3 +255,22 @@ export function validateStaff(v: ReturnType<typeof cleanStaff>): Errors {
   const p = validatePassword(v.password); if (p) e.password = p;
   return e;
 }
+
+// ---------- account details edited by the super admin (customers and sub admins) ----------
+export const cleanAccount = (b: Record<string, unknown>) => ({
+  name: str(b.name).replace(/\s+/g, " "),
+  email: str(b.email).toLowerCase(),
+  phone: str(b.phone).replace(/\s+/g, ""),
+  vendor_name: str(b.vendor_name).replace(/\s+/g, " "),
+});
+/** `nameRequired`: sub admins must have a name, customers may not have one yet. `vendor`: only sub admins have a vendor name. */
+export function validateAccount(v: ReturnType<typeof cleanAccount>, opts: { nameRequired: boolean; vendor: boolean }): Errors {
+  const e: Errors = {};
+  const n = nameErr(v.name, "Name", opts.nameRequired);
+  if (n) e.name = n; else if (v.name && v.name.length < 2) e.name = "Name must be at least 2 characters";
+  if (v.email && (v.email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.email))) e.email = "Enter a valid email address";
+  if (v.phone && !/^\d{10}$/.test(v.phone)) e.phone = "Phone number must be exactly 10 digits";
+  if (!v.email && !v.phone) e.email = "Add an email or a phone number — it is the login";
+  if (opts.vendor) { const vn = validateVendorName(v.vendor_name); if (vn) e.vendor_name = vn; }
+  return e;
+}

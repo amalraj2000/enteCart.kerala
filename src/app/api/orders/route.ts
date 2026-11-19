@@ -1,6 +1,6 @@
 import { after, NextResponse } from "next/server";
 import { notifyNewOrder } from "@/lib/notify";
-import { revalidateCatalog } from "@/lib/catalog";
+import { revalidateCatalogSoon } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
 import { withImages } from "@/lib/orderItems";
@@ -9,8 +9,7 @@ import { bad, readJson } from "@/lib/http";
 import { expireUnpaidOrders } from "@/lib/expireUnpaid";
 import { razorpayConfigured } from "@/lib/razorpay";
 import { CATEGORY_JOIN, VISIBLE } from "@/lib/visibility";
-import { rateLimit } from "@/lib/rateLimit";
-import { getSavedAddress, sameAddress, saveAddress } from "@/lib/addresses";
+import { getSavedAddress, sameAddress } from "@/lib/addresses";
 import { cleanAddress, firstError, validateAddress, validateOrderItems } from "@/lib/validate";
 export const dynamic = "force-dynamic";
 
@@ -23,6 +22,24 @@ export async function GET(req: Request) {
   const pi = pageInfo(total, parsePage(new URL(req.url).searchParams.get("page")));
   const r = await c.execute({ sql: `SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT ${PAGE_SIZE} OFFSET ?`, args: [user.id, pi.offset] });
   return NextResponse.json({ orders: await withImages(r.rows), page: pi.page, totalPages: pi.totalPages, total });
+}
+
+/** Links the order to the customer's saved address (or saves this one if they have none yet), with as few writes as possible. Never throws. */
+async function linkAddress(c: Awaited<ReturnType<typeof db>>, userId: number, orderId: number, addr: ReturnType<typeof cleanAddress>) {
+  try {
+    const saved = await getSavedAddress(c, userId);
+    if (saved) {
+      if (sameAddress(saved, addr)) await c.execute({ sql: "UPDATE orders SET address_id = ? WHERE id = ?", args: [saved.id, orderId] });
+      return; // a different address than the saved one: the order keeps its own address snapshot, the saved address is left alone
+    }
+    // First order: save the address, point the user and this order at it — all three in ONE write.
+    const mine = "(SELECT id FROM addresses WHERE user_id = ? ORDER BY id DESC LIMIT 1)";
+    await c.batch([
+      { sql: "INSERT INTO addresses (user_id, full_name, phone, house_name, street_name, city, state, pincode) VALUES (?,?,?,?,?,?,?,?)", args: [userId, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode] },
+      { sql: `UPDATE users SET address_id = ${mine}, name = ? WHERE id = ?`, args: [userId, addr.customer_name, userId] },
+      { sql: `UPDATE orders SET address_id = ${mine} WHERE id = ?`, args: [userId, orderId] },
+    ], "write");
+  } catch (e) { console.error("Linking saved address failed:", (e as Error).message); }
 }
 
 export async function POST(req: Request) {
@@ -38,16 +55,22 @@ export async function POST(req: Request) {
   if (aerr) return bad(aerr);
   const { items: lines, error } = validateOrderItems(b.items);
   if (error) return bad(error);
-  if (!(await rateLimit(`order:${user.id}`, 10, 600))) return bad("Too many orders in a short time. Please wait a few minutes.", 429);
-
   const c = await db();
-  await expireUnpaidOrders(c); // give back stock held by abandoned online payments before we check availability
-  // Prices, titles, sizes and stock always come from the DB — never from the browser.
+  // Anti-spam: at most 10 orders per 10 minutes per customer. Counted from the orders table itself — a plain read, no extra write
+  // on every checkout, and exact across all servers. (Attempts that fail, e.g. sold out, don't count.)
+  const recent = Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND created_at > datetime('now', '-10 minutes')", args: [user.id] })).rows[0].n);
+  if (recent >= 10) return bad("Too many orders in a short time. Please wait a few minutes.", 429);
+  await expireUnpaidOrders(c); // give back stock held by abandoned online payments (at most once a minute per server)
+
+  // 1) Prices, titles, sizes and stock always come from the DB — never from the browser. ONE query for all cart lines.
+  const ids = [...new Set(lines.map((l) => l.id))];
+  const prows = (await c.execute({ sql: `SELECT p.* FROM products p ${CATEGORY_JOIN} WHERE p.id IN (${ids.map(() => "?").join(",")}) AND ${VISIBLE}`, args: ids })).rows;
+  const byId = new Map(prows.map((p) => [Number(p.id), p]));
   const items: { id: number; title: string; price: number; size: string; qty: number; image_url: string }[] = [];
   const need = new Map<number, number>();
   let total = 0;
   for (const l of lines) {
-    const p = (await c.execute({ sql: `SELECT p.* FROM products p ${CATEGORY_JOIN} WHERE p.id = ? AND ${VISIBLE}`, args: [l.id] })).rows[0];
+    const p = byId.get(l.id);
     if (!p) return bad("A product in your cart is no longer available");
     const sizes = String(p.sizes).split(",").map((s) => s.trim()).filter(Boolean);
     if (sizes.length ? !sizes.includes(l.size) : l.size !== "") return bad(`Please choose a valid size for "${p.title}"`);
@@ -56,50 +79,49 @@ export async function POST(req: Request) {
     total += Number(p.price) * l.qty;
   }
 
-  // Reserve stock atomically (the WHERE stock >= ? guard means two buyers can never oversell); undo on failure.
-  const reserved: [number, number][] = [];
+  // Fail fast when stock is already short (the common case in a rush on a popular item): costs one read, zero writes.
   for (const [id, qty] of need) {
-    const r = await c.execute({ sql: "UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?", args: [qty, id, qty] });
-    if (r.rowsAffected !== 1) {
-      for (const [rid, rq] of reserved) await c.execute({ sql: "UPDATE products SET stock = stock + ? WHERE id = ?", args: [rq, rid] });
-      const t = items.find((i) => i.id === id)?.title;
-      return bad(`Sorry, "${t}" doesn't have enough stock left`);
-    }
-    reserved.push([id, qty]);
-  }
-  let addressId: number | null = null;
-  try {
-    // Link the order to the customer's saved address (or save this one if they have none yet).
-    // Done BEFORE the transaction opens: the transaction holds the write lock.
-    const saved = await getSavedAddress(c, user.id);
-    addressId = saved ? (sameAddress(saved, addr) ? saved.id : null) : await saveAddress(c, user.id, addr);
-  } catch {
-    for (const [rid, rq] of reserved) await c.execute({ sql: "UPDATE products SET stock = stock + ? WHERE id = ?", args: [rq, rid] });
-    return bad("Could not place the order. Please try again.", 500);
+    const p = byId.get(id)!;
+    if (Number(p.stock) < qty) return bad(`Sorry, "${p.title}" doesn't have enough stock left`);
   }
 
-  const tx = await c.transaction("write");
+  // 3) Reserve stock + create the order + its items in ONE atomic batch = one database round trip and one short write lock.
+  //    (The old way — a reservation per product, then an open transaction with its own round trips — held the single SQLite
+  //    write lock for far longer, which is what makes a rush of simultaneous orders queue up.)
+  //    Overselling is impossible: each UPDATE only succeeds while stock >= qty, and the check right after it raises an error
+  //    when it didn't, which rolls back the WHOLE batch — nothing is reserved, nothing needs "undoing".
+  //    json('!') is just a deliberate error: invalid JSON → "malformed JSON".
+  const stmts: { sql: string; args: (string | number | null)[] }[] = [];
+  for (const [id, qty] of need) {
+    stmts.push({ sql: "UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?", args: [qty, id, qty] });
+    stmts.push({ sql: "SELECT CASE WHEN changes() = 1 THEN 1 ELSE json('!') END", args: [] });
+  }
+  stmts.push({
+    sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total, payment_method, payment_status)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    args: [user.id, null, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total, online ? "online" : "cod", online ? "Unpaid" : "Pending"],
+  });
+  // Writers are serialised by SQLite, so inside this one transaction this user's newest order IS the one just inserted.
+  const newest = "(SELECT id FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 1)";
+  for (const i of items)
+    stmts.push({ sql: `INSERT INTO order_items (order_id, product_id, title, size, qty, price, image_url) VALUES (${newest},?,?,?,?,?,?)`, args: [user.id, i.id, i.title, i.size, i.qty, i.price, i.image_url] });
+  stmts.push({ sql: `SELECT id FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 1`, args: [user.id] });
+
   try {
-    const ins = await tx.execute({
-      sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total, payment_method, payment_status)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      args: [user.id, addressId, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total, online ? "online" : "cod", online ? "Unpaid" : "Pending"],
-    });
-    const orderId = Number(ins.lastInsertRowid);
-    await tx.batch(
-      items.map((i) => ({ sql: "INSERT INTO order_items (order_id, product_id, title, size, qty, price, image_url) VALUES (?,?,?,?,?,?,?)", args: [orderId, i.id, i.title, i.size, i.qty, i.price, i.image_url] })),
-    );
-    await tx.commit();
+    const res = await c.batch(stmts, "write");
+    const orderId = Number(res[res.length - 1].rows[0].id);
     // Runs after the response is sent (Vercel keeps the function alive for it); a failure here never affects the order.
     // Online orders are announced only once the payment succeeds (see markPaid); COD orders right away.
+    // Linking the order to the customer's saved address is bookkeeping, not part of "the order exists": done after the response.
+    after(() => linkAddress(c, user.id, orderId, addr));
     if (!online) after(() => notifyNewOrder({ id: orderId, adminUrl: `${new URL(req.url).origin}/admin/orders/${orderId}` }));
-    revalidateCatalog();
+    revalidateCatalogSoon();
     return NextResponse.json({ id: orderId, total });
   } catch {
-    await tx.rollback().catch(() => {});
-    for (const [rid, rq] of reserved) await c.execute({ sql: "UPDATE products SET stock = stock + ? WHERE id = ?", args: [rq, rid] });
+    // The batch rolled back as a whole. Most likely somebody else took the last items a moment ago — say which one.
+    const now = (await c.execute({ sql: `SELECT id, title, stock FROM products WHERE id IN (${ids.map(() => "?").join(",")})`, args: ids }).catch(() => null))?.rows ?? [];
+    const short = now.find((p) => Number(p.stock) < (need.get(Number(p.id)) || 0));
+    if (short) return bad(`Sorry, "${short.title}" doesn't have enough stock left`);
     return bad("Could not place the order. Please try again.", 500);
-  } finally {
-    tx.close();
   }
 }

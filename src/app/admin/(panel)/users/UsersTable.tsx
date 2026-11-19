@@ -12,13 +12,6 @@ export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: P
   const owner = staffRole === "admin"; // sub admins: view users and make them inactive — nothing else
   const router = useRouter();
   const label = (u: U) => u.email || u.phone || `#${u.id}`;
-
-  async function setStatus(u: U, status: U["status"], msg: string) {
-    const r = await fetch(`/api/admin/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-    if (!r.ok) return toast.error("Could not update user");
-    toast.success(msg);
-    router.refresh();
-  }
   async function remove(u: U) {
     if (!confirm(`Permanently delete ${label(u)}? This cannot be undone.`)) return;
     const r = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
@@ -32,16 +25,14 @@ export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: P
       ? <span className="whitespace-nowrap rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Super admin</span>
       : <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold capitalize ${badge[u.status]}`}>{u.status}</span>;
 
-  // One set of actions, laid out by the caller (table cell on desktop, button grid on phones).
-  const Actions = ({ u, cls }: { u: U; cls: string }) => (
-    <>
-      <Link href={`/admin/users/${u.id}`} className={`btn-outline ${cls}`}>View</Link>
-      {owner && u.role === "user" && u.status !== "active" && <button className={`btn-primary ${cls}`} onClick={() => setStatus(u, "active", `${label(u)} activated`)}>Activate</button>}
-      {u.role === "user" && u.status === "active" && <button className={`btn border ${cls}`} onClick={() => setStatus(u, "inactive", `${label(u)} marked inactive`)}>Make inactive</button>}
-      {owner && u.role === "user" && u.status !== "blocked" && <button className={`btn border border-amber-500 text-amber-700 hover:bg-amber-50 ${cls}`} onClick={() => setStatus(u, "blocked", `${label(u)} blocked`)}>Block</button>}
-      {owner && u.role === "user" && <button className={`btn-danger ${cls}`} onClick={() => remove(u)}>Delete</button>}
-    </>
-  );
+  // The list only has Edit and Delete. Name, email, phone and status (active / inactive / blocked) are all changed on the Edit page.
+  const Actions = ({ u, cls }: { u: U; cls: string }) =>
+    u.role !== "user" ? null : (
+      <>
+        <Link href={`/admin/users/${u.id}/edit`} className={`btn-outline ${cls}`}>Edit</Link>
+        {owner && <button className={`btn-danger ${cls}`} onClick={() => remove(u)}>Delete</button>}
+      </>
+    );
 
   return (
     <div className="space-y-4">
@@ -61,7 +52,7 @@ export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: P
               <Status u={u} />
             </div>
             <p className="mt-2 text-xs text-gray-400">User #{u.id} · Registered {u.created_at}</p>
-            <div className={`mt-3 grid gap-2 ${u.role === "admin" ? "grid-cols-1" : "grid-cols-2"}`}><Actions u={u} cls="w-full" /></div>
+            <div className={`mt-3 grid gap-2 ${owner ? "grid-cols-2" : "grid-cols-1"}`}><Actions u={u} cls="w-full" /></div>
           </li>
         ))}
         {!users.length && <li className="card p-6 text-center text-gray-500">No users yet.</li>}
@@ -88,6 +79,7 @@ export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: P
         </table>
       </div>
       <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/users${p > 1 ? `?page=${p}` : ""}`} />
+
     </div>
   );
 }
