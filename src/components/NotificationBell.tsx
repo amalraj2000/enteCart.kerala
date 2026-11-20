@@ -18,7 +18,7 @@ function ago(utc: string): string {
 }
 
 /** Bell in the header for a logged-in customer: unread count + a list of order / review updates. */
-export default function NotificationBell({ userId }: { userId: number }) {
+export default function NotificationBell({ userId = 0, endpoint = "/api/notifications", emptyText = "We’ll tell you here when your order or review status changes." }: { userId?: number; endpoint?: string; emptyText?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
@@ -29,13 +29,13 @@ export default function NotificationBell({ userId }: { userId: number }) {
   const load = useCallback(async () => {
     const mine = epoch.current;
     try {
-      const r = await fetch("/api/notifications", { cache: "no-store" });
+      const r = await fetch(endpoint, { cache: "no-store" });
       if (!r.ok) return;
       const d = await r.json();
       if (mine !== epoch.current) return; // the customer changed something while this was loading: that is newer
       setItems(d.items || []); setUnread(d.unread || 0);
     } catch { /* offline: keep what we have */ }
-  }, []);
+  }, [endpoint]);
 
   // Fetch now, then every minute while the tab is visible, and again whenever the tab regains focus.
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function NotificationBell({ userId }: { userId: number }) {
 
   async function markRead(body: { id: number } | { all: true }) {
     epoch.current++;
-    await fetch("/api/notifications", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+    await fetch(endpoint, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
     load(); // sync with the server once it has saved
   }
   function openItem(n: Item) {
@@ -85,7 +85,7 @@ export default function NotificationBell({ userId }: { userId: number }) {
             {unread > 0 && <button type="button" onClick={markAll} className="text-xs font-semibold text-brand-700 hover:underline">Mark all as read</button>}
           </div>
           {items.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-gray-500">No notifications yet.<br />We’ll tell you here when your order or review status changes.</p>
+            <p className="px-4 py-10 text-center text-sm text-gray-500">No notifications yet.<br />{emptyText}</p>
           ) : (
             <ul className="max-h-[70vh] divide-y overflow-y-auto sm:max-h-96">
               {items.map((n) => (

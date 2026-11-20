@@ -5,6 +5,7 @@ import { bad, readJson } from "@/lib/http";
 import { parseId, cleanReview, firstError, validateReview } from "@/lib/validate";
 import { rateLimit } from "@/lib/rateLimit";
 import { LOCKED_MESSAGE, attachPhotos, reviewsEnabled } from "@/lib/reviews";
+import { notifyStaffReview } from "@/lib/notifications";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -31,6 +32,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (upd.rowsAffected !== 1) return bad("Review not found", 404);
   const photoErr = await attachPhotos(c, user.id, id, r.images);
   if (photoErr) return bad(photoErr);
+  await notifyStaffReview(c, id, "edited");
   return NextResponse.json({ ok: true });
 }
 

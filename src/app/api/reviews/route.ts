@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
+import { notifyStaffReview } from "@/lib/notifications";
 import { approvedReviews, attachPhotos, deliveredOrderFor, reviewSummary, reviewsEnabled } from "@/lib/reviews";
 import { cleanReview, firstError, validateReview } from "@/lib/validate";
 export const dynamic = "force-dynamic";
@@ -44,5 +45,6 @@ export async function POST(req: Request) {
   } catch { return bad("You have already reviewed this product", 409); } // two quick taps: the UNIQUE key stops the second
   const photoErr = await attachPhotos(c, user.id, id, r.images);
   if (photoErr) { await c.execute({ sql: "DELETE FROM reviews WHERE id = ?", args: [id] }); return bad(photoErr); }
+  await notifyStaffReview(c, id, "new");
   return NextResponse.json({ ok: true, id });
 }

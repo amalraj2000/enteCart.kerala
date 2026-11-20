@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
 import { notifyNewOrder } from "@/lib/notify";
+import { notifyStaffNewOrder } from "@/lib/notifications";
 import { revalidateCatalogSoon } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
@@ -134,6 +135,7 @@ export async function POST(req: Request) {
     // Linking the order to the customer's saved address is bookkeeping, not part of "the order exists": done after the response.
     after(() => linkAddress(c, user.id, orderId, addr));
     if (!online) after(() => notifyNewOrder({ id: orderId, adminUrl: `${new URL(req.url).origin}/admin/orders/${orderId}` }));
+    if (!online) after(() => notifyStaffNewOrder(c, orderId)); // bell in the admin header (online orders: once paid, see markPaid)
     revalidateCatalogSoon();
     return NextResponse.json({ id: orderId, pid: publicId, total });
   } catch {

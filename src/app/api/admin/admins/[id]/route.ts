@@ -77,6 +77,7 @@ export async function DELETE(req: Request, { params }: Ctx) {
     const b = await readJson(req).catch(() => null);
     if (!(await confirmOwnPassword(t.c!, me.id, b?.confirm_password))) return bad("To delete a super admin, enter your own password to confirm.", 403);
   }
+  await t.c!.execute({ sql: "DELETE FROM notifications WHERE user_id = ?", args: [id] }); // their bell goes with the account
   await t.c!.execute({ sql: "DELETE FROM users WHERE id = ? AND role IN ('subadmin', 'admin')", args: [id] });
   return NextResponse.json({ ok: true });
 }

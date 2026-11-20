@@ -30,7 +30,7 @@ export default function Header() {
           <span className="text-xl font-extrabold tracking-tight text-brand-700">
             ente<span className="text-gray-900">Cart</span><span className="text-brand-500">.kerala</span>
           </span>
-          <AdminMenu />
+          <div className="flex items-center gap-2"><NotificationBell endpoint="/api/admin/notifications" emptyText="We’ll tell you here when a new order or review comes in." /><AdminMenu /></div>
         </div>
       </header>
     );

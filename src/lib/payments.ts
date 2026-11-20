@@ -1,6 +1,7 @@
 import type { Client } from "@libsql/client";
 import { notifyNewOrder } from "@/lib/notify";
 import { fetchPaymentInfo } from "@/lib/razorpay";
+import { notifyStaffNewOrder } from "@/lib/notifications";
 
 /** A Razorpay order was created for this shop order (payment attempt started). One row per attempt. */
 export async function recordAttempt(c: Client, orderId: number, razorpayOrderId: string, amount: number) {
@@ -22,5 +23,6 @@ export async function markPaid(c: Client, orderId: number, razorpayOrderId: stri
   const r = await c.execute({ sql: "UPDATE orders SET payment_status = 'Paid', razorpay_payment_id = ? WHERE id = ? AND payment_status = 'Unpaid'", args: [paymentId, orderId] });
   if (r.rowsAffected === 1) { // first time only — owner gets the WhatsApp alert now that the money is in
     await notifyNewOrder({ id: orderId, paidOnline: true, adminUrl: origin ? `${origin}/admin/orders/${orderId}` : undefined });
+    await notifyStaffNewOrder(c, orderId, true);
   }
 }

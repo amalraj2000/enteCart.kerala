@@ -10,6 +10,7 @@ import { CANCELLABLE_STATUS } from "@/lib/orderPolicy";
 import { reconcilePayment } from "@/lib/reconcilePayment";
 import { refundOrder } from "@/lib/refund";
 import { restockOrder } from "@/lib/orderStock";
+import { notifyStaffOrderCancelled } from "@/lib/notifications";
 export const dynamic = "force-dynamic";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -54,6 +55,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return bad(o.status === "Cancelled" ? "This order is already cancelled." : `This order is ${String(o.status)} and can no longer be cancelled.`, 409);
   }
   await restockOrder(c, id); // the items go back on sale
+  await notifyStaffOrderCancelled(c, id);
   revalidateCatalogSoon();
   if (!online) return NextResponse.json({ ok: true });
   await reconcilePayment(c, id); // a payment that landed during the cancel is picked up (and refunded) here
