@@ -4,6 +4,7 @@ import { getAdmin } from "@/lib/session";
 import { canEditRow } from "@/lib/permissions";
 import { bad, readJson } from "@/lib/http";
 import { parseId, validateStatus, cleanReview, firstError, validateReview } from "@/lib/validate";
+import { notifyUser, reviewInfo } from "@/lib/notifications";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -31,7 +32,21 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const denied = await guard(me, id);
   if (denied) return denied;
   const c = await db();
+  const before = await reviewInfo(c, id);
   await c.execute({ sql: `UPDATE reviews SET ${sets.join(", ")} WHERE id = ?`, args: [...args, id] });
+  // Tell the customer, but only when something actually changed.
+  if (before) {
+    const t = before.title;
+    if ("status" in b && b.status !== before.status) {
+      if (b.status === "approved") await notifyUser(c, before.userId, { type: "review", title: "Your review was approved", body: before.active ? `Your review of “${t}” is now visible to everyone.` : `Your review of “${t}” was approved.`, link: before.active ? before.productLink : before.orderLink });
+      else if (b.status === "rejected") await notifyUser(c, before.userId, { type: "review", title: "Your review was not approved", body: `Your review of “${t}” was not approved. You can edit it and send it again.`, link: before.orderLink });
+    }
+    if ("active" in b && b.active !== before.active && (("status" in b ? b.status : before.status) === "approved")) {
+      await notifyUser(c, before.userId, b.active
+        ? { type: "review", title: "Your review is visible again", body: `Your review of “${t}” is showing on the shop again.`, link: before.productLink }
+        : { type: "review", title: "Your review is hidden", body: `Your review of “${t}” is not being shown on the shop right now.`, link: before.orderLink });
+    }
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -67,6 +82,8 @@ export async function DELETE(_: Request, { params }: Ctx) {
   const denied = await guard(me, id);
   if (denied) return denied;
   const c = await db();
+  const before = await reviewInfo(c, id);
   await c.batch([{ sql: "DELETE FROM review_images WHERE review_id = ?", args: [id] }, { sql: "DELETE FROM reviews WHERE id = ?", args: [id] }], "write");
+  if (before) await notifyUser(c, before.userId, { type: "review", title: "Your review was removed", body: `The shop removed your review of “${before.title}”.`, link: before.orderLink });
   return NextResponse.json({ ok: true });
 }

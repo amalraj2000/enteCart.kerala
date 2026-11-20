@@ -5,6 +5,7 @@ import { Suspense, useState } from "react";
 import { useApp } from "./Providers";
 import { toast } from "./Toaster";
 import AdminMenu from "./AdminMenu";
+import NotificationBell from "./NotificationBell";
 
 function SearchBox() {
   const router = useRouter();
@@ -49,7 +50,8 @@ export default function Header() {
             🛒 Cart
             {cartCount > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs text-white">{cartCount}</span>}
           </Link>
-          {!authReady ? null : user ? (
+          {!authReady ? null : user ? (<>
+            <NotificationBell userId={user.id} />
             <div className="relative">
               <button className="flex items-center gap-2 rounded-full bg-brand-600 py-1 pl-1 pr-2 text-sm font-semibold text-white hover:bg-brand-700 md:pr-4" onClick={() => setMenu(!menu)} aria-label="Account menu">
                 {user.avatar ? (
@@ -69,7 +71,7 @@ export default function Header() {
                 </div>
               )}
             </div>
-          ) : (
+          </>) : (
             <button className="btn-primary !min-h-10 !px-4" onClick={() => openAuth()}>Login<span className="hidden md:inline">&nbsp;/ Register</span></button>
           )}
         </div>

@@ -6,6 +6,7 @@ import { editableOrderIds } from "@/lib/permissions";
 import { bad, readJson } from "@/lib/http";
 import { parseId, validateStatus } from "@/lib/validate";
 import { reserveOrder, restockOrder } from "@/lib/orderStock";
+import { notifyUser, orderStatusNotice } from "@/lib/notifications";
 
 /** Allowed moves. Orders only go forward; cancelling is possible until it ships; a cancelled order can be re-opened (stock permitting). */
 const NEXT: Record<string, string[]> = {
@@ -26,7 +27,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const next = b.status as string;
   const c = await db();
 
-  const cur = (await c.execute({ sql: "SELECT status, payment_status, payment_method FROM orders WHERE id = ?", args: [id] })).rows[0];
+  const cur = (await c.execute({ sql: "SELECT status, payment_status, payment_method, user_id, public_id FROM orders WHERE id = ?", args: [id] })).rows[0];
   if (!cur) return bad("Order not found", 404);
   if (!(await editableOrderIds(c, me, [id])).has(id)) return bad("You can only update orders that include products you added", 403);
   const prev = String(cur.status);
@@ -45,6 +46,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return bad("This order was just changed by someone else — please reload.", 409);
   }
   if (next === "Cancelled") await restockOrder(c, id);
+  const notice = orderStatusNotice(id, next); // tell the customer (bell in their header)
+  if (notice && cur.user_id) await notifyUser(c, Number(cur.user_id), { type: "order", ...notice, link: `/orders/${cur.public_id || id}` });
   revalidateCatalog();
   return NextResponse.json({ ok: true });
 }
