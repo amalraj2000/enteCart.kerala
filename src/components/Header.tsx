@@ -27,9 +27,7 @@ export default function Header() {
     return (
       <header className="sticky top-0 z-40 border-b border-brand-100 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <span className="text-xl font-extrabold tracking-tight text-brand-700">
-            ente<span className="text-gray-900">Cart</span><span className="text-brand-500">.kerala</span>
-          </span>
+          <span><img src="/logo-full.png" alt="enteCart.kerala" width="1015" height="264" className="h-9 w-auto md:h-10" /></span>
           <div className="flex items-center gap-2"><NotificationBell endpoint="/api/admin/notifications" emptyText="We’ll tell you here when a new order or review comes in." /><AdminMenu /></div>
         </div>
       </header>
@@ -37,9 +35,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-brand-100 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 md:py-3">
-        <Link href="/" className="text-xl font-extrabold tracking-tight text-brand-700">
-          ente<span className="text-gray-900">Cart</span><span className="text-brand-500">.kerala</span>
-        </Link>
+        <Link href="/" aria-label="enteCart.kerala home"><img src="/logo-full.png" alt="enteCart.kerala" width="1015" height="264" className="h-9 w-auto md:h-10" /></Link>
         <div className="order-3 flex w-full md:order-none md:w-auto md:flex-1 md:px-6"><Suspense><SearchBox /></Suspense></div>
         <div className="ml-auto flex items-center gap-2 md:ml-0">
           <Link href="/wishlist" className="btn-outline relative !hidden !px-3 md:!inline-flex" aria-label={`Wishlist (${wishlist.length})`} title="Wishlist">

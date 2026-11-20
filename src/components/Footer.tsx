@@ -26,7 +26,7 @@ export default async function Footer() {
     <footer className="mt-8 border-t bg-white md:mt-12">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-7 px-4 py-7 md:py-10 lg:grid-cols-4 lg:gap-8">
         <div className="col-span-2 lg:col-span-1">
-          <p className="text-xl font-extrabold tracking-tight text-brand-700">ente<span className="text-gray-900">Cart</span><span className="text-brand-500">.kerala</span></p>
+          <img src="/logo-full.png" alt="enteCart.kerala" width="1015" height="264" className="h-10 w-auto" />
           <p className="mt-3 text-sm text-gray-600">{s.shop_about || "Kerala's friendly online store. Handpicked products, delivered to your doorstep."}</p>
           {socials.length > 0 && (
             <div className="mt-4 flex gap-2">
