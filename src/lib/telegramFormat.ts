@@ -53,18 +53,28 @@ function itemsTable(o: TgOrder, titleLines: number): string {
 
 export function formatTelegramOrder(o: TgOrder): string {
   const pay = o.payment === "cod" ? "💵 <b>Cash on Delivery</b> — collect on delivery" : o.payment === "online-paid" ? "💳 <b>PAID ONLINE</b>" : "💳 <b>Online payment</b> (pending)";
-  const customer = [
-    field("Name", o.name),
-    field("Phone", o.phone),
-    field("Address", [...wrap(`${o.house}, ${o.street}`, VALUE), ...wrap(`${o.city}, ${o.state}`, VALUE), `PIN ${o.pincode}`]),
-  ].join("\n");
+  // Each value sits in its own <code> block: tapping it in Telegram copies just that value.
+  const addr = `${o.house}, ${o.street}\n${o.city}, ${o.state} - ${o.pincode}`;
+  const customer = [`📛 <b>Name</b>\n<code>${esc(o.name)}</code>`, `📞 <b>Phone</b>\n<code>${esc(o.phone)}</code>`, `📍 <b>Delivery address</b>\n<code>${esc(addr)}</code>`].join("\n\n");
   const build = (titleLines: number) => [
     `🛒 <b>NEW ORDER #${o.id}</b>`,
     pay, "",
-    "👤 <b>CUSTOMER</b>", `<pre>${esc(customer)}</pre>`, "",
+    "👤 <b>CUSTOMER</b> (tap a value to copy)", customer, "",
     `📦 <b>ITEMS</b> (${o.items.reduce((s, i) => s + i.qty, 0)})`, `<pre>${itemsTable(o, titleLines)}</pre>`,
     ...(o.adminUrl ? ["", `🔗 ${esc(o.adminUrl)}`] : []),
   ].join("\n");
   const full = build(3);
   return full.length <= 3900 ? full : build(1); // Telegram's limit is 4096 characters; a huge order falls back to one line per item
+}
+
+/** Real "copy" buttons under the message (Bot API copy_text, max 256 chars each). Values are plain text here: Telegram does not parse them. */
+export function telegramCopyButtons(o: TgOrder) {
+  const cut = (t: string) => t.slice(0, 256);
+  const address = `${o.house}, ${o.street}, ${o.city}, ${o.state} - ${o.pincode}`;
+  const btn = (text: string, copy: string) => ({ text, copy_text: { text: cut(copy) } });
+  return { inline_keyboard: [
+    [btn("📋 Copy phone", o.phone), btn("📋 Copy name", o.name)],
+    [btn("📋 Copy address", address)],
+    [btn("📋 Copy name + phone + address", `${o.name}\n${o.phone}\n${address}`)],
+  ] };
 }

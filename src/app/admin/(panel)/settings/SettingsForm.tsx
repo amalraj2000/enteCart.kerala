@@ -77,7 +77,7 @@ export default function SettingsForm({ initial }: { initial: Settings }) {
       </div>
       <div className="space-y-2 border-t pt-4">
         <div><h2 className="font-bold">Home page sections</h2><p className="text-sm text-gray-500">Turn a section off to hide it from the home page. Products themselves stay in the shop.</p></div>
-        {([["show_new_arrivals", "✨ New arrivals", "The row of the newest products"], ["show_best_sellers", "🔥 Best sellers", "The row of most-ordered products"]] as const).map(([k, label, sub]) => {
+        {([["show_highlights", "⭐ Highlighted products", "The row of products you mark as Highlighted in Admin → Products"], ["show_new_arrivals", "✨ New arrivals", "The row of the newest products"], ["show_best_sellers", "🔥 Best sellers", "The row of most-ordered products"]] as const).map(([k, label, sub]) => {
           const on = v[k] !== "0";
           return (
             <div key={k} className="flex items-center justify-between gap-3 rounded-lg border p-3">

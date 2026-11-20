@@ -123,6 +123,7 @@ export const cleanProduct = (b: Record<string, unknown>) => ({
   status: cleanStatus(b.status),
   category_id: b.category_id === "" || b.category_id == null ? null : num(b.category_id),
   video_url: str(b.video_url),
+  product_link: str(b.product_link),
   images: [...new Set((Array.isArray(b.images) ? b.images : b.image_url ? [b.image_url] : []).map(str).filter(Boolean))] as string[],
 });
 export const PRODUCT_MAX_IMAGES = 8;
@@ -144,6 +145,11 @@ export function validateProduct(p: ReturnType<typeof cleanProduct>): Errors {
     else if (parts.some((s) => !SIZE.test(s))) e.sizes = "Sizes: comma separated, e.g. S,M,L,XL (letters/numbers, max 20 chars each)";
   }
   if (p.video_url && (p.video_url.length > 300 || !parseVideo(p.video_url))) e.video_url = "Enter a valid https link to a YouTube or Vimeo video, or a direct .mp4 / .webm file";
+  if (p.product_link) {
+    let ok = p.product_link.length <= 500;
+    try { ok = ok && ["https:", "http:"].includes(new URL(p.product_link).protocol); } catch { ok = false; }
+    if (!ok) e.product_link = "Enter a valid link starting with https:// (max 500 characters)";
+  }
   if (p.category_id !== null && !(Number.isInteger(p.category_id) && p.category_id > 0)) e.category_id = "Choose a valid category";
   if (p.images.length > PRODUCT_MAX_IMAGES) e.images = `At most ${PRODUCT_MAX_IMAGES} photos`;
   else {
@@ -242,6 +248,7 @@ export const cleanSettings = (b: Record<string, unknown>) => ({
   social_instagram: str(b.social_instagram), social_facebook: str(b.social_facebook), social_youtube: str(b.social_youtube),
   show_new_arrivals: b.show_new_arrivals === "0" || b.show_new_arrivals === false ? "0" : "1",
   show_best_sellers: b.show_best_sellers === "0" || b.show_best_sellers === false ? "0" : "1",
+  show_highlights: b.show_highlights === "0" || b.show_highlights === false ? "0" : "1",
   theme_color: str(b.theme_color),
 });
 export function validateSettings(v: ReturnType<typeof cleanSettings>): Errors {

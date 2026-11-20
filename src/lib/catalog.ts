@@ -35,14 +35,15 @@ export const getHomeData = unstable_cache(
     const isNewSql = `(p.created_at >= datetime('now', '-${NEW_DAYS} days')) AS is_new`;
 
     // All independent reads go out together (one round-trip of waiting instead of five in a row).
-    const [cats, sold, products, banners, arrivals, sw] = await Promise.all([
+    const [cats, sold, products, banners, arrivals, sw, hl] = await Promise.all([
       c.execute("SELECT c.id, c.name, COUNT(p.id) AS count FROM categories c JOIN products p ON p.category_id = c.id WHERE c.status = 'active' AND p.status = 'active' GROUP BY c.id ORDER BY c.name"),
       c.execute(`SELECT ${COLS}, SUM(oi.qty) AS units FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN products p ON p.id = oi.product_id ${CATEGORY_JOIN}
                  WHERE o.status != 'Cancelled' AND ${VISIBLE} GROUP BY p.id ORDER BY units DESC, p.id DESC LIMIT 8`),
       c.execute({ sql: `SELECT ${COLS}, ${isNewSql} FROM products p ${CATEGORY_JOIN} WHERE ${[VISIBLE, ...where].join(" AND ")} ORDER BY p.id DESC`, args }),
       filtered ? Promise.resolve({ rows: [] }) : c.execute("SELECT id, title, subtitle, button_text, link, image FROM banners WHERE active = 1 ORDER BY position, id"),
       filtered ? Promise.resolve({ rows: [] }) : c.execute(`SELECT ${COLS}, ${isNewSql} FROM products p ${CATEGORY_JOIN} WHERE ${VISIBLE} ORDER BY p.created_at DESC, p.id DESC LIMIT 4`),
-      c.execute("SELECT key, value FROM settings WHERE key IN ('show_new_arrivals', 'show_best_sellers')"),
+      c.execute("SELECT key, value FROM settings WHERE key IN ('show_new_arrivals', 'show_best_sellers', 'show_highlights')"),
+      filtered ? Promise.resolve({ rows: [] }) : c.execute(`SELECT ${COLS}, ${isNewSql} FROM products p ${CATEGORY_JOIN} WHERE ${VISIBLE} AND p.highlighted = 1 ORDER BY p.id DESC LIMIT 8`),
     ]);
     const off = new Set(sw.rows.filter((r) => String(r.value) === "0").map((r) => String(r.key))); // missing = on
 
@@ -56,12 +57,14 @@ export const getHomeData = unstable_cache(
       products: prods.map(mark),
       arrivals: (arrivals.rows as unknown as CardProduct[]).map((p) => ({ ...mark(p), is_new: p.is_new })),
       bestRow: soldRows.filter((s) => Number(s.units) > 0).slice(0, 4).map((p) => ({ ...mark(p), is_new: newIds.has(Number(p.id)) ? 1 : 0 })),
+      highlights: (hl.rows as unknown as CardProduct[]).map((p) => ({ ...mark(p), is_new: p.is_new })),
       banners: banners.rows as unknown as BannerData[],
       showArrivals: !off.has("show_new_arrivals"),
       showBest: !off.has("show_best_sellers"),
+      showHighlights: !off.has("show_highlights"),
     });
   },
-  ["home-v1"], { tags: [TAG], revalidate: 60 },
+  ["home-v2"], { tags: [TAG], revalidate: 60 },
 );
 
 export const getProduct = unstable_cache(
@@ -69,7 +72,9 @@ export const getProduct = unstable_cache(
     const c = await db();
     const r = await c.execute({ sql: `SELECT p.*, c.name AS category_name
             FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.public_id = ? AND p.status = 'active' AND (c.id IS NULL OR c.status = 'active')`, args: [publicId] });
-    return r.rows[0] ? plain(r.rows[0]) : null;
+    if (!r.rows[0]) return null;
+    const { product_link: _admin, ...pub } = plain(r.rows[0]) as Record<string, unknown>; // admin-only reference link never leaves the server
+    return pub;
   },
   ["product-v3"], { tags: [TAG], revalidate: 60 },
 );

@@ -40,7 +40,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
   const q = typeof rawQ === "string" ? rawQ.trim().slice(0, 100) : "";
   const catId = parseId(rawCat);
   const filtered = !!q || !!catId;
-  const { cats, products, arrivals, bestRow, banners, showArrivals, showBest } = await getHomeData(q, catId); // cached — see lib/catalog.ts
+  const { cats, products, arrivals, bestRow, banners, showArrivals, showBest, highlights, showHighlights } = await getHomeData(q, catId); // cached — see lib/catalog.ts
   const active = cats.find((x) => Number(x.id) === catId);
 
   const chip = (id: number | null) => `/?${new URLSearchParams({ ...(q ? { q } : {}), ...(id ? { category: String(id) } : {}) }).toString()}`;
@@ -75,6 +75,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
         </nav>
       )}
 
+      {!filtered && showHighlights && <Row title="⭐ Highlighted" hint="Our picks for you" products={highlights} />}
       {!filtered && showArrivals && <Row title="✨ New arrivals" hint="Fresh in the shop" products={arrivals} />}
       {!filtered && showBest && <Row title="🔥 Best sellers" hint="Most loved by our customers" products={bestRow} />}
 

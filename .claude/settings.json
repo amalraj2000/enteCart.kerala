@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(git log *)",
-      "Bash(node -e \"require\\('sharp'\\);console.log\\('sharp ok'\\)\")"
+      "Bash(node -e \"require\\('sharp'\\);console.log\\('sharp ok'\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" localhost:3000/)",
+      "Bash(curl -s localhost:3000/)"
     ]
   }
 }

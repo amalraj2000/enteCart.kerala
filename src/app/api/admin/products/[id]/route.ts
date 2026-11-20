@@ -39,10 +39,25 @@ export async function PUT(req: Request, { params }: Ctx) {
   const base = typeof b.stock_base === "number" && Number.isInteger(b.stock_base) && b.stock_base >= 0 ? b.stock_base : null;
   const stockExpr = base === null ? "?" : "MAX(0, stock + ?)";
   const r = await c.execute({
-    sql: `UPDATE products SET title=?, description=?, price=?, original_price=?, stock=${stockExpr}, sizes=?, image_url=?, images=?, category_id=?, status=?, video_url=? WHERE id=?`,
-    args: [p.title, p.description, p.price, p.original_price, base === null ? p.stock : p.stock - base, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, p.status, p.video_url, id],
+    sql: `UPDATE products SET title=?, description=?, price=?, original_price=?, stock=${stockExpr}, sizes=?, image_url=?, images=?, category_id=?, status=?, video_url=?, product_link=? WHERE id=?`,
+    args: [p.title, p.description, p.price, p.original_price, base === null ? p.stock : p.stock - base, p.sizes, p.images[0] || "", JSON.stringify(p.images), p.category_id, p.status, p.video_url, p.product_link, id],
   });
   if (!r.rowsAffected) return bad("Product not found", 404);
+  revalidateCatalog();
+  return NextResponse.json({ ok: true });
+}
+
+/** Quick switch from the product list: { highlighted: true|false }. Same ownership rule as editing. */
+export async function PATCH(req: Request, { params }: Ctx) {
+  const me = await getAdmin();
+  if (!me) return bad("Unauthorized", 401);
+  const id = parseId((await params).id);
+  if (!id) return bad("Invalid product id");
+  const denied = await guard(me, id);
+  if (denied) return denied;
+  const b = await readJson(req);
+  if (!b || typeof b.highlighted !== "boolean") return bad("Invalid request");
+  await (await db()).execute({ sql: "UPDATE products SET highlighted = ? WHERE id = ?", args: [b.highlighted ? 1 : 0, id] });
   revalidateCatalog();
   return NextResponse.json({ ok: true });
 }

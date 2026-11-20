@@ -329,7 +329,7 @@ export function db(): Promise<Client> {
   return ready.then(getClient);
 }
 
-const SCHEMA_VERSION = "2026-11-notify-1";
+const SCHEMA_VERSION = "2026-11-highlight-1";
 
 async function setupSchema(c: Client) {
       await migrateToRelational(c);
@@ -343,6 +343,8 @@ async function setupSchema(c: Client) {
       await c.execute("ALTER TABLE banners ADD COLUMN created_by INTEGER").catch(() => {}); // already exists
       await c.execute("ALTER TABLE products ADD COLUMN original_price REAL NOT NULL DEFAULT 0").catch(() => {}); // already exists (original / MRP price; 0 = no discount)
       await c.execute("ALTER TABLE products ADD COLUMN video_url TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists (optional product video link)
+      await c.execute("ALTER TABLE products ADD COLUMN product_link TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists (optional admin-only reference link, never shown to shoppers)
+      await c.execute("ALTER TABLE products ADD COLUMN highlighted INTEGER NOT NULL DEFAULT 0").catch(() => {}); // already exists (staff-picked "Highlighted" products for the home page)
       // Non-guessable product link id (/product/<public_id>). Existing products get one now; new ones get it when they are created.
       await c.execute("ALTER TABLE products ADD COLUMN public_id TEXT").catch(() => {}); // already exists
       await c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_public_id ON products(public_id)");

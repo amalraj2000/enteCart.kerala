@@ -11,7 +11,7 @@ import { toPhoto } from "@/lib/image";
 import { PRODUCT_MAX_IMAGES, PRODUCT_TITLE_MAX, type Errors, cleanProduct, firstError, validateProduct } from "@/lib/validate";
 import { discountPct, inr, productImages, type Category, type Product } from "@/lib/types";
 
-const empty = { title: "", description: "", price: "", original_price: "", stock: "", sizes: "", category_id: "", status: "active", video_url: "", images: [] as string[] };
+const empty = { title: "", description: "", price: "", original_price: "", stock: "", sizes: "", category_id: "", status: "active", video_url: "", product_link: "", images: [] as string[] };
 
 export default function ProductManager({ products, categories, pi, staff, meId, by }: { products: (Product & { editable?: boolean })[]; categories: Category[]; pi: PageInfo; staff: { id: number; name: string }[]; meId: number; by: string }) {
   const router = useRouter();
@@ -38,7 +38,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
   }
 
   const set = (k: string) => (e: React.ChangeEvent<any>) => setForm({ ...form, [k]: e.target.value });
-  function edit(p: Product) { setForm({ ...p, stock_base: p.stock, original_price: p.original_price ? p.original_price : "", category_id: p.category_id ?? "", status: p.status || "active", video_url: p.video_url || "", images: productImages(p) }); setEditing(p.id); setOpen(true); setErrs({}); }
+  function edit(p: Product) { setForm({ ...p, stock_base: p.stock, original_price: p.original_price ? p.original_price : "", category_id: p.category_id ?? "", status: p.status || "active", video_url: p.video_url || "", product_link: p.product_link || "", images: productImages(p) }); setEditing(p.id); setOpen(true); setErrs({}); }
   function add() { setForm(empty); setEditing(null); setOpen(true); setErrs({}); }
 
   const delImg = (i: number) => setForm({ ...form, images: form.images.filter((_: string, k: number) => k !== i) });
@@ -79,6 +79,13 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
     if (!r.ok) return toast.error((await r.json().catch(() => ({}))).error || "Could not save product");
     toast.success(editing ? "Product updated" : "Product added");
     setOpen(false); router.refresh();
+  }
+  async function toggleHighlight(p: Product) {
+    const next = !p.highlighted;
+    const r = await fetch(`/api/admin/products/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ highlighted: next }) });
+    if (!r.ok) return toast.error((await r.json().catch(() => ({}))).error || "Could not change highlight");
+    toast.success(next ? "Highlighted on the home page" : "Removed from highlights");
+    router.refresh();
   }
   async function del(p: Product) {
     if (!confirm(`Delete "${p.title}"?`)) return;
@@ -132,6 +139,11 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
               <option value="inactive">Inactive — hidden from customers</option>
             </select>
             {categories.find((c) => String(c.id) === String(form.category_id))?.status === "inactive" && <p className="mt-1 text-xs text-amber-700">This category is inactive, so the product stays hidden until the category is made active.</p>}
+          </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-gray-500">Product link — optional, for your own reference (never shown to customers)</label>
+            <input className={`input ${errs.product_link ? "!border-red-500" : ""}`} value={form.product_link} onChange={set("product_link")} maxLength={500} placeholder="https://…" inputMode="url" />
+            <FieldError msg={errs.product_link} />
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold text-gray-500">Product video — optional: upload a short MP4/WebM (max 4 MB) or paste a YouTube link (Shorts work too), Vimeo or .mp4 link</label>
@@ -197,25 +209,43 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
           {staff.map((s) => <option key={s.id} value={s.id}>{s.name}{s.id === meId ? " (me)" : ""}</option>)}
         </select>
       </div>
-      <div className="card divide-y">
-        {products.map((p) => (
-          <div key={p.id} className="flex flex-wrap items-center gap-3 p-3">
-            <div className="relative shrink-0">
-              <Img src={p.image_url} alt={p.title} sizes="56px" className="h-14 w-14 rounded-lg object-cover" />
-              {productImages(p).length > 1 && <span className="absolute -bottom-1 -right-1 rounded-full bg-brand-700 px-1.5 text-[10px] font-semibold text-white">{productImages(p).length}</span>}
-            </div>
-            <div className="min-w-0 flex-1 basis-40">
-              <p className="font-medium">{p.title}<span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${p.status === "inactive" ? "bg-gray-200 text-gray-600" : "bg-green-100 text-green-800"}`}>{p.status === "inactive" ? "Inactive" : "Active"}</span>{p.category_name && <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">{p.category_name}</span>}</p>
-              <p className="text-xs text-gray-500">{inr(p.price)}{discountPct(p.price, p.original_price) > 0 && <> <span className="line-through">{inr(Number(p.original_price))}</span> <span className="font-semibold text-green-700">{discountPct(p.price, p.original_price)}% off</span></>} · Stock {p.stock}{p.sizes && ` · ${p.sizes}`}</p>
-              <p className="text-xs text-gray-400">Added by <span className="font-medium text-gray-600">{p.added_by_name || "—"}</span></p>
-            </div>
-            {p.editable === false
-              ? <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Added by another admin">View only</span>
-              : <div className="flex gap-2"><button className="btn-outline !py-1" onClick={() => edit(p)}>Edit</button>
-            <button className="btn-danger !py-1" onClick={() => del(p)}>Delete</button></div>}
-          </div>
-        ))}
-        {!products.length && <p className="p-6 text-center text-gray-500">No products.</p>}
+      <div className="card overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b bg-gray-50 text-xs text-gray-500">
+            <tr><th className="p-3">Photo</th><th className="p-3">Name</th><th className="p-3">Status</th><th className="p-3">Category</th><th className="p-3">Highlight</th><th className="p-3 text-right">Action</th></tr>
+          </thead>
+          <tbody className="divide-y">
+            {products.map((p) => (
+              <tr key={p.id}>
+                <td className="p-3">
+                  <div className="relative w-14">
+                    <Img src={p.image_url} alt={p.title} sizes="56px" className="h-14 w-14 rounded-lg object-cover" />
+                    {productImages(p).length > 1 && <span className="absolute -bottom-1 -right-1 rounded-full bg-brand-700 px-1.5 text-[10px] font-semibold text-white">{productImages(p).length}</span>}
+                  </div>
+                </td>
+                <td className="min-w-[12rem] p-3">
+                  <p className="font-medium">{p.title}</p>
+                  <p className="text-xs text-gray-500">{inr(p.price)}{discountPct(p.price, p.original_price) > 0 && <> <span className="line-through">{inr(Number(p.original_price))}</span> <span className="font-semibold text-green-700">{discountPct(p.price, p.original_price)}% off</span></>} · Stock {p.stock}</p>
+                  <p className="text-xs text-gray-400">Added by <span className="font-medium text-gray-600">{p.added_by_name || "—"}</span>{p.product_link && <> · <a href={p.product_link} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-700 hover:underline">Product link ↗</a></>}</p>
+                </td>
+                <td className="p-3"><span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${p.status === "inactive" ? "bg-gray-200 text-gray-600" : "bg-green-100 text-green-800"}`}>{p.status === "inactive" ? "Inactive" : "Active"}</span></td>
+                <td className="p-3">{p.category_name ? <span className="whitespace-nowrap rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">{p.category_name}</span> : <span className="text-xs text-gray-400">Uncategorised</span>}</td>
+                <td className="p-3">
+                  <button type="button" role="switch" aria-checked={!!p.highlighted} aria-label={`Highlight ${p.title} on the home page`} disabled={p.editable === false}
+                    onClick={() => toggleHighlight(p)} className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 ${p.highlighted ? "bg-brand-600" : "bg-gray-300"}`}>
+                    <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${p.highlighted ? "left-[22px]" : "left-0.5"}`} />
+                  </button>
+                </td>
+                <td className="p-3">
+                  {p.editable === false
+                    ? <span className="float-right whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Added by another admin">View only</span>
+                    : <div className="flex justify-end gap-2"><button className="btn-outline !py-1" onClick={() => edit(p)}>Edit</button><button className="btn-danger !py-1" onClick={() => del(p)}>Delete</button></div>}
+                </td>
+              </tr>
+            ))}
+            {!products.length && <tr><td colSpan={6} className="p-6 text-center text-gray-500">No products.</td></tr>}
+          </tbody>
+        </table>
       </div>
       <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/products?${new URLSearchParams({ ...(by !== "all" ? { by } : {}), ...(p > 1 ? { page: String(p) } : {}) })}`} />
     </div>

@@ -1,6 +1,6 @@
 import { inr } from "./types";
 import { db } from "./db";
-import { formatTelegramOrder } from "./telegramFormat";
+import { formatTelegramOrder, telegramCopyButtons, type TgOrder } from "./telegramFormat";
 
 /**
  * Alert to the shop owner when an order is placed, on every channel that is configured:
@@ -40,16 +40,16 @@ export async function notifyNewOrder(o: { id: number; adminUrl?: string; paidOnl
     const text = lines.join("\n").slice(0, 1500); // keep well inside WhatsApp / URL / Telegram limits
 
     // Telegram gets a nicer layout (bold headings + aligned item table); WhatsApp keeps the plain text above.
-    const tgText = telegram ? formatTelegramOrder({
+    const tgOrder: TgOrder | null = telegram ? {
       id: o.id, payment: online ? (o.paidOnline ? "online-paid" : "online-pending") : "cod",
       name: String(ord.customer_name), phone: String(ord.phone), house: String(ord.house_name), street: String(ord.street_name), city: String(ord.city), state: String(ord.state), pincode: String(ord.pincode),
       items: items.map((i) => ({ title: String(i.title), size: i.size ? String(i.size) : "", qty: Number(i.qty), price: Number(i.price) })), total: Number(ord.total), adminUrl: o.adminUrl,
-    }) : "";
+    } : null;
 
     // Channels are independent: one failing never stops the other, and neither can affect the order (it is already saved).
     await Promise.all([
       whatsapp ? sendWhatsApp(waPhone!, waKey!, text) : null,
-      telegram ? sendTelegram(tgToken!, tgChats, tgText) : null,
+      telegram ? sendTelegram(tgToken!, tgChats, formatTelegramOrder(tgOrder!), telegramCopyButtons(tgOrder!)) : null,
     ]);
   } catch (e) {
     console.error("Order notification failed:", (e as Error).message);
@@ -69,16 +69,18 @@ async function sendWhatsApp(phone: string, key: string, text: string) {
   } catch (e) { console.error("WhatsApp notification failed:", (e as Error).message); }
 }
 
-/** Sends the (already escaped) HTML message to each Telegram chat. */
-async function sendTelegram(token: string, chats: string[], html: string) {
+/** Sends the (already escaped) HTML message, with copy buttons, to each Telegram chat. */
+async function sendTelegram(token: string, chats: string[], html: string, markup: object) {
   const base = process.env.TELEGRAM_API_URL || "https://api.telegram.org";
   await Promise.all(chats.map(async (chat) => {
     try {
-      const r = await fetch(`${base}/bot${token}/sendMessage`, {
+      const post = (extra: object) => fetch(`${base}/bot${token}/sendMessage`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chat, text: html, parse_mode: "HTML", disable_web_page_preview: true }),
+        body: JSON.stringify({ chat_id: chat, text: html, parse_mode: "HTML", disable_web_page_preview: true, ...extra }),
         signal: AbortSignal.timeout(8000),
       });
+      let r = await post({ reply_markup: markup });
+      if (r.status === 400) r = await post({}); // buttons not accepted (older Bot API): still deliver the message without them
       if (!r.ok) console.error(`Telegram notification to ${chat} failed: HTTP ${r.status} ${(await r.text().catch(() => "")).slice(0, 150)}`); // never log the URL: it contains the bot token
     } catch (e) { console.error(`Telegram notification to ${chat} failed:`, (e as Error).name); } // error text can echo the URL, so only the type is logged
   }));
