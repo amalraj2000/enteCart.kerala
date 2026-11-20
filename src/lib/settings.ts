@@ -1,6 +1,8 @@
+import { unstable_cache } from "next/cache";
 import { db } from "./db";
+import { DEFAULT_THEME, themeById } from "./themes";
 
-export const SETTING_KEYS = ["shop_phone", "shop_whatsapp", "shop_email", "shop_address", "shop_hours", "shop_about", "social_instagram", "social_facebook", "social_youtube", "show_new_arrivals", "show_best_sellers"] as const;
+export const SETTING_KEYS = ["shop_phone", "shop_whatsapp", "shop_email", "shop_address", "shop_hours", "shop_about", "social_instagram", "social_facebook", "social_youtube", "show_new_arrivals", "show_best_sellers", "theme_color"] as const;
 /** On/off switches stored as "1" / "0". A missing value means ON, so the sections stay visible until the owner turns them off. */
 export const TOGGLE_KEYS = ["show_new_arrivals", "show_best_sellers"] as const;
 export type Settings = Record<(typeof SETTING_KEYS)[number], string>;
@@ -10,7 +12,7 @@ export async function getSettings(): Promise<Settings> {
   const c = await db();
   const rows = (await c.execute("SELECT key, value FROM settings")).rows;
   const m = new Map(rows.map((r) => [String(r.key), String(r.value)]));
-  return Object.fromEntries(SETTING_KEYS.map((k) => [k, m.get(k) ?? ((TOGGLE_KEYS as readonly string[]).includes(k) ? "1" : "")])) as Settings;
+  return Object.fromEntries(SETTING_KEYS.map((k) => [k, m.get(k) ?? ((TOGGLE_KEYS as readonly string[]).includes(k) ? "1" : k === "theme_color" ? DEFAULT_THEME : "")])) as Settings;
 }
 
 /**
@@ -24,3 +26,9 @@ export async function onlinePaymentsEnabled(): Promise<boolean> {
   const r = (await c.execute({ sql: "SELECT value FROM settings WHERE key = ?", args: [ONLINE_PAYMENTS_KEY] })).rows[0];
   return String(r?.value ?? "1") !== "0";
 }
+
+/** The shop's colour theme for the layout and manifest. Cached (tag "catalog"): saving Settings calls revalidateCatalog(), so a change shows up at once. */
+export const getTheme = unstable_cache(async () => {
+  const r = (await (await db()).execute({ sql: "SELECT value FROM settings WHERE key = 'theme_color'", args: [] })).rows[0];
+  return themeById(r?.value);
+}, ["shop-theme"], { tags: ["catalog"], revalidate: 300 });

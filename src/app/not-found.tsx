@@ -64,8 +64,8 @@ export default function NotFound() {
             <circle cx="84" cy="79" r="5" fill="#fda4af" opacity=".8" />
             <path d="M51 78 Q60 74 69 78 Q66 90 60 91 Q54 90 51 78Z" fill="#f59e0b" />
             {/* brand-green scarf */}
-            <path d="M24 104 Q60 120 96 104 L96 117 Q60 133 24 117Z" fill="#178a49" />
-            <path d="M80 118 L90 146 L77 146 L72 122Z" fill="#126f3b" />
+            <path d="M24 104 Q60 120 96 104 L96 117 Q60 133 24 117Z" className="fill-brand-600" />
+            <path d="M80 118 L90 146 L77 146 L72 122Z" className="fill-brand-700" />
           </g>
         </svg>
 

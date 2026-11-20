@@ -3,6 +3,7 @@
  * The server never trusts the browser: every route re-runs these checks on the raw request body.
  */
 import { ORDER_STATUSES } from "./types";
+import { THEME_IDS } from "./themes";
 
 export type Errors = Record<string, string>;
 export const firstError = (e: Errors): string | null => Object.values(e)[0] ?? null;
@@ -222,9 +223,11 @@ export const cleanSettings = (b: Record<string, unknown>) => ({
   social_instagram: str(b.social_instagram), social_facebook: str(b.social_facebook), social_youtube: str(b.social_youtube),
   show_new_arrivals: b.show_new_arrivals === "0" || b.show_new_arrivals === false ? "0" : "1",
   show_best_sellers: b.show_best_sellers === "0" || b.show_best_sellers === false ? "0" : "1",
+  theme_color: str(b.theme_color),
 });
 export function validateSettings(v: ReturnType<typeof cleanSettings>): Errors {
   const e: Errors = {};
+  if (!THEME_IDS.includes(v.theme_color)) e.theme_color = "Choose one of the theme colours";
   if (v.shop_phone && !/^\d{10}$/.test(v.shop_phone)) e.shop_phone = "Phone must be exactly 10 digits";
   if (v.shop_whatsapp && !/^\d{10,13}$/.test(v.shop_whatsapp)) e.shop_whatsapp = "WhatsApp number: 10 digits (or with country code, digits only)";
   if (v.shop_email && (v.shop_email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.shop_email))) e.shop_email = "Enter a valid email address";

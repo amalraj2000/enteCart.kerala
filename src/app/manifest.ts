@@ -1,7 +1,10 @@
 import type { MetadataRoute } from "next";
+import { getTheme } from "@/lib/settings";
+
+export const dynamic = "force-dynamic";
 
 /** Web app manifest → makes the shop installable ("Add to Home screen") and gives it an app-like window. */
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
   return {
     id: "/",
     name: "enteCart.kerala — Shop local, shop Kerala",
@@ -12,7 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     background_color: "#ffffff",
-    theme_color: "#178a49",
+    theme_color: (await getTheme()).shades[600],
     lang: "en-IN",
     categories: ["shopping"],
     icons: [

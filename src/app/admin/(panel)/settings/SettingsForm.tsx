@@ -1,10 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/Toaster";
 import FieldError from "@/components/FieldError";
 import { type Errors, cleanSettings, firstError, validateSettings } from "@/lib/validate";
 import type { Settings } from "@/lib/settings";
+import { THEMES, themeById, themeVars } from "@/lib/themes";
 
 const FIELDS: [keyof Settings, string, string, "input" | "textarea", string?][] = [
   ["shop_about", "About the shop (footer & About page)", "Kerala's friendly online store…", "textarea", "Max 250 characters"],
@@ -23,6 +24,13 @@ export default function SettingsForm({ initial }: { initial: Settings }) {
   const [v, setV] = useState<Settings>(initial);
   const [errs, setErrs] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+
+  // Live preview: picking a colour recolours this browser tab at once; nothing is saved (or visible to shoppers) until "Save settings".
+  useEffect(() => {
+    const root = document.documentElement, vars = themeVars(themeById(v.theme_color));
+    for (const [k, val] of Object.entries(vars)) root.style.setProperty(k, val);
+    return () => { for (const k of Object.keys(vars)) root.style.removeProperty(k); }; // leaving the page (or re-render) restores the saved colour
+  }, [v.theme_color]);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -48,6 +56,25 @@ export default function SettingsForm({ initial }: { initial: Settings }) {
           <FieldError msg={errs[k]} />
         </label>
       ))}
+      <div className="space-y-3 border-t pt-4">
+        <div><h2 className="font-bold">Theme colour</h2><p className="text-sm text-gray-500">Pick a colour and the whole shop changes to it: buttons, links, badges and the admin panel. You can preview it here first. It goes live for shoppers when you press Save.</p></div>
+        <div role="radiogroup" aria-label="Theme colour" className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          {THEMES.map((th) => {
+            const on = v.theme_color === th.id;
+            return (
+              <button key={th.id} type="button" role="radio" aria-checked={on} onClick={() => setV({ ...v, theme_color: th.id })}
+                className={`flex flex-col items-center gap-2 rounded-lg border-2 p-2 text-xs font-medium transition ${on ? "border-gray-900 bg-gray-50" : "border-transparent hover:border-gray-300"}`}>
+                <span className="relative flex h-10 w-full overflow-hidden rounded-md ring-1 ring-black/10" aria-hidden>
+                  {([800, 600, 500, 200] as const).map((sh) => <span key={sh} className="flex-1" style={{ background: th.shades[sh] }} />)}
+                  {on && <span className="absolute inset-0 flex items-center justify-center text-white drop-shadow">✓</span>}
+                </span>
+                {th.name}
+              </button>
+            );
+          })}
+        </div>
+        <FieldError msg={errs.theme_color} />
+      </div>
       <div className="space-y-2 border-t pt-4">
         <div><h2 className="font-bold">Home page sections</h2><p className="text-sm text-gray-500">Turn a section off to hide it from the home page. Products themselves stay in the shop.</p></div>
         {([["show_new_arrivals", "✨ New arrivals", "The row of the newest products"], ["show_best_sellers", "🔥 Best sellers", "The row of most-ordered products"]] as const).map(([k, label, sub]) => {

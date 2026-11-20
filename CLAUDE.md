@@ -20,6 +20,9 @@ Kerala e-commerce shop. **Next.js 15 App Router + React 19 + TypeScript + Tailwi
 ## SEO
 `lib/site.ts` (`siteUrl()` from `SITE_URL`, `snippet`, `jsonLd`), `app/robots.ts`, `app/sitemap.ts` (visible products + active categories + info pages), per-product `generateMetadata` + Product JSON-LD, category/search metadata on `/`, Organization/WebSite JSON-LD on home. Private pages get `X-Robots-Tag: noindex` via `next.config.mjs`. Set `SITE_URL` in production.
 
+## Theme colour
+Owner picks one of the presets in `lib/themes.ts` (Admin → Settings → Theme colour, setting `theme_color`, only preset ids accepted). Tailwind `brand-*` colours are CSS variables (`--brand-50…800`, defaults in `globals.css`); `app/layout.tsx` injects the chosen set, and `getTheme()` (`lib/settings.ts`, cached under tag `catalog`) also feeds the browser bar colour and `manifest.ts`. Use `brand-*` classes, never hardcoded green/hex, so the theme applies everywhere. Status badges (Delivered/Active) stay plain green on purpose.
+
 ## Customer features (pages in `src/app`)
 - `/` home: banner slider, category chips, search (`?q`, `?cat`), New Arrivals (14 days) & Best Sellers (≥3 units) sections (toggle in settings), product grid + pagination. Data via `lib/catalog.ts` (`unstable_cache`, 60s, tag `catalog`; `revalidateCatalog()` after admin edits, `revalidateCatalogSoon()` after orders).
 - `/product/[id]`: optional product video (`products.video_url`: YouTube/Vimeo/direct https .mp4 link, parsed in `lib/video.ts`, shown as the last slide of `components/Gallery.tsx`), gallery (up to 8 photos), sizes, discount % (from `original_price`), stock, BuyPanel (add to cart / buy now), wishlist button, "Sold by".
@@ -30,7 +33,7 @@ Kerala e-commerce shop. **Next.js 15 App Router + React 19 + TypeScript + Tailwi
 - PWA: `public/sw.js` (never caches HTML/API, only static + product photos; offline page `/offline`), `app/manifest.ts`, `components/Pwa.tsx` (install prompt).
 
 ## Admin panel (`src/app/admin/(panel)/…`)
-Dashboard w/ stats+charts (`/api/admin/stats`, `components/Charts.tsx`) · Orders (list, date filter IST, status change, detail) · Products (CRUD, multi-photo upload, category, discount, sizes, stock, active/inactive) · Categories · Banners (homepage slider) · Users (view/edit/block/delete customers) · Admins (owner only: create/edit/delete staff) · Payments (Razorpay list + refund button) · Settings (shop phone/WhatsApp/email/address/hours/about/socials, section toggles) · Account (own profile/password). Admin login is the normal login modal with the admin email.
+Dashboard w/ stats+charts (`/api/admin/stats`, `components/Charts.tsx`) · Orders (list, date filter IST, status change, detail) · Products (CRUD, multi-photo upload, category, discount, sizes, stock, active/inactive) · Categories · Banners (homepage slider) · Users (view/edit/block/delete customers) · Admins (owner only: create/edit/delete staff) · Payments (Razorpay list + refund button) · Settings (shop phone/WhatsApp/email/address/hours/about/socials, section toggles, **theme colour**) · Account (own profile/password). Admin login is the normal login modal with the admin email.
 
 ## Order & payment flow (most intricate part)
 - Order statuses: `Placed → Confirmed → Shipped → Delivered`, or `Cancelled` (`ORDER_STATUSES` in `lib/types.ts`). `orders.payment_method` = `cod|online`; `payment_status` = `Pending`(COD) | `Unpaid` | `Paid` | `Refunded`.

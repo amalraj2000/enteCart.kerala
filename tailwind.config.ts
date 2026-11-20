@@ -10,7 +10,8 @@ export default {
         "toast-bar": { from: { transform: "scaleX(1)" }, to: { transform: "scaleX(0)" } },
       },
       colors: {
-        brand: { 50: "#f0fdf4", 100: "#dcfce7", 200: "#bbf7d0", 500: "#22a35a", 600: "#178a49", 700: "#126f3b", 800: "#0f5a31" },
+        // The shop colour is chosen by the owner (Admin → Settings → Theme colour). Layout injects the --brand-* variables; defaults live in globals.css.
+        brand: Object.fromEntries([50, 100, 200, 500, 600, 700, 800].map((n) => [n, `rgb(var(--brand-${n}) / <alpha-value>)`])),
       },
     },
   },

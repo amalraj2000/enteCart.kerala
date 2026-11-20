@@ -9,6 +9,8 @@ import { PwaRegister } from "@/components/Pwa";
 import ShopLoader from "@/components/ShopLoader";
 import MobileNav from "@/components/MobileNav";
 import { SITE_NAME, siteUrl } from "@/lib/site";
+import { getTheme } from "@/lib/settings";
+import { themeCss } from "@/lib/themes";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
@@ -21,11 +23,15 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#178a49" };
+export async function generateViewport(): Promise<Viewport> {
+  return { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: (await getTheme()).shades[600] };
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const theme = await getTheme();
   return (
     <html lang="en">
+      <head><style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} /></head>
       <body className="flex min-h-screen flex-col">
         <Providers>
           <Header />

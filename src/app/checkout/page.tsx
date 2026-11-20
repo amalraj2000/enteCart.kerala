@@ -270,7 +270,7 @@ function Checkout() {
                     <label key={k} className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition ${method === k ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-brand-200"}`}>
                       <span className="text-2xl" aria-hidden>{icon}</span>
                       <span className="min-w-0 flex-1"><span className="block font-semibold">{t}</span><span className="block text-xs text-gray-600">{sub}</span></span>
-                      <input type="radio" name="pay" className="h-5 w-5 accent-[#178a49]" checked={method === k} onChange={() => setMethod(k)} />
+                      <input type="radio" name="pay" className="h-5 w-5 accent-brand-600" checked={method === k} onChange={() => setMethod(k)} />
                     </label>
                   ))}
                 </div>
