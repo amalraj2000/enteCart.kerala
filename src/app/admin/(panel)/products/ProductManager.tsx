@@ -134,7 +134,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
             {categories.find((c) => String(c.id) === String(form.category_id))?.status === "inactive" && <p className="mt-1 text-xs text-amber-700">This category is inactive, so the product stays hidden until the category is made active.</p>}
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold text-gray-500">Product video — optional: upload a short MP4/WebM (max 4 MB) or paste a YouTube / Vimeo / .mp4 link</label>
+            <label className="mb-1 block text-xs font-semibold text-gray-500">Product video — optional: upload a short MP4/WebM (max 4 MB) or paste a YouTube link (Shorts work too), Vimeo or .mp4 link</label>
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <button type="button" className="btn border" disabled={vidBusy} onClick={() => videoRef.current?.click()}>{vidBusy ? "Uploading…" : "Upload video"}</button>
               {form.video_url && <button type="button" className="btn border text-red-600" onClick={() => setForm({ ...form, video_url: "" })}>Remove video</button>}
@@ -142,7 +142,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
               <input ref={videoRef} type="file" accept="video/mp4,video/webm" className="hidden" onChange={(e) => uploadVideo(e.target.files?.[0])} />
             </div>
             {form.video_url?.startsWith("/api/videos/") && <video src={form.video_url} controls preload="metadata" className="mb-2 aspect-video w-full max-w-sm rounded-lg bg-black" />}
-            <input className={`input ${errs.video_url ? "!border-red-500" : ""}`} value={form.video_url} onChange={set("video_url")} maxLength={300} placeholder="https://www.youtube.com/watch?v=…" inputMode="url" />
+            <input className={`input ${errs.video_url ? "!border-red-500" : ""}`} value={form.video_url} onChange={set("video_url")} maxLength={300} placeholder="https://www.youtube.com/shorts/…  or  https://youtu.be/…" inputMode="url" />
             <FieldError msg={errs.video_url} />
           </div>
           <div className="sm:col-span-2">

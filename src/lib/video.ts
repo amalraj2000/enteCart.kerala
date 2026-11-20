@@ -13,10 +13,10 @@ export function parseVideo(raw: string): VideoSrc | null {
     id = u.pathname === "/watch" ? u.searchParams.get("v") || "" : (u.pathname.match(/^\/(?:embed|shorts|live|v)\/([^/?]+)/) || [])[1] || "";
   }
   if (host === "youtu.be" || host === "youtube.com" || host === "youtube-nocookie.com")
-    return /^[\w-]{11}$/.test(id) ? { kind: "youtube", id, embed: `https://www.youtube-nocookie.com/embed/${id}?rel=0` } : null;
+    return /^[\w-]{11}$/.test(id) ? { kind: "youtube", id, embed: `https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1&controls=0&modestbranding=1&iv_load_policy=3&disablekb=1&fs=0&autoplay=1&mute=1&loop=1&playlist=${id}&enablejsapi=1` } : null;
   if (host === "vimeo.com" || host === "player.vimeo.com") {
     const m = u.pathname.match(/\/(\d{5,12})(?:\/|$)/);
-    return m ? { kind: "vimeo", id: m[1], embed: `https://player.vimeo.com/video/${m[1]}` } : null;
+    return m ? { kind: "vimeo", id: m[1], embed: `https://player.vimeo.com/video/${m[1]}?title=0&byline=0&portrait=0&badge=0&dnt=1&autoplay=1&muted=1&loop=1&controls=0` } : null;
   }
   if (/\.(mp4|webm|mov)$/i.test(u.pathname)) return { kind: "file", embed: u.href };
   return null;

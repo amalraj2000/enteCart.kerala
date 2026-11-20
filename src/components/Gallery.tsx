@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { largeSrc } from "@/lib/imgSrc";
 import Img from "./Img";
+import VideoPlayer from "./VideoPlayer";
 import type { VideoSrc } from "@/lib/video";
 
 /**
@@ -44,7 +45,7 @@ export default function Gallery({ images, alt, video }: { images: string[]; alt:
 
       <div className="relative min-w-0 flex-1">
         <div
-          className={`relative aspect-square w-full overflow-hidden rounded-xl border bg-white ${isVid ? "" : "cursor-zoom-in"}`}
+          className={`relative w-full overflow-hidden rounded-xl border bg-white ${isVid ? "mx-auto aspect-[9/16] max-h-[34rem] max-w-full bg-black" : "aspect-square cursor-zoom-in"}`}
           onMouseMove={isVid ? undefined : onMove} onMouseLeave={() => setZoom(null)}
           onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
           onTouchEnd={(e) => {
@@ -54,9 +55,7 @@ export default function Gallery({ images, alt, video }: { images: string[]; alt:
             touchX.current = null;
           }}>
           {isVid && video ? (
-            video.kind === "file"
-              ? <video key={video.embed} src={video.embed} controls playsInline autoPlay muted preload="metadata" className="h-full w-full bg-black object-contain" />
-              : <iframe src={video.embed} title={`${alt} video`} allow="fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className="h-full w-full bg-black" />
+            <VideoPlayer video={video} title={alt} />
           ) : (
             <Img src={images[i] || ""} alt={alt} priority sizes="(max-width: 768px) 100vw, 560px"
               className="h-full w-full object-contain transition-transform duration-150 ease-out"
