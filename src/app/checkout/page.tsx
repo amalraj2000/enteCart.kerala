@@ -37,7 +37,7 @@ function Steps({ step }: { step: 1 | 2 }) {
 }
 
 function Checkout() {
-  const { checkoutItems, user, openAuth, clearCart, resetBuyNow, authReady, syncStock } = useApp();
+  const { checkoutItems, user, openAuth, clearCart, resetBuyNow, authReady, syncStock, cartReady } = useApp();
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<Record<string, string>>({ state: "Kerala" });
@@ -125,6 +125,7 @@ function Checkout() {
       <p className="mt-2 text-gray-600">{placed === "cod" ? "Taking you to your order…" : "Complete your payment in the secure window."}</p>
     </div>
   );
+  if (!cartReady) return null; // saved cart / buy-now item not loaded yet: don't flash "Nothing to checkout"
   if (!checkoutItems.length) return <p className="card p-8 text-center text-gray-600">Nothing to checkout. <a className="text-brand-700 underline" href="/">Go shopping</a></p>;
   if (authReady && !user)
     return <div className="card p-8 text-center"><p className="mb-3">Please log in to place your order.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Register</button></div>;

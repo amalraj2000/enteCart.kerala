@@ -11,7 +11,7 @@ type Ctx = {
   cart: CartItem[]; cartCount: number; cartTotal: number;
   addToCart: (i: CartItem) => { added: number; stock: number; capped: boolean; inCart: number }; syncStock: () => Promise<boolean>; setQty: (id: number, size: string, qty: number) => void;
   removeItem: (id: number, size: string) => void; clearCart: () => void;
-  buyNow: (i: CartItem) => void; resetBuyNow: () => void; checkoutItems: CartItem[];
+  cartReady: boolean; buyNow: (i: CartItem) => void; resetBuyNow: () => void; checkoutItems: CartItem[];
   afterAuth: () => void;
   wishlist: number[]; toggleWish: (productId: number) => void;
 };
@@ -57,10 +57,19 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       history.replaceState(null, "", location.pathname);
     }
     try { setCart(JSON.parse(localStorage.getItem("ek_cart") || "[]")); } catch {}
+    // "Buy now" lives in memory, so a refresh of /checkout?buynow=1 used to lose it. It is kept in sessionStorage (this tab only) and restored here.
+    try {
+      const b = JSON.parse(sessionStorage.getItem("ek_buynow") || "null");
+      if (b && location.pathname === "/checkout" && new URLSearchParams(location.search).get("buynow") && Number.isInteger(b.id) && Number.isInteger(b.qty) && b.qty > 0) setBuyNowItem(b);
+    } catch {}
     setCartReady(true);
   }, []);
   // Once the saved cart has been loaded, refresh it with live stock (covers direct visits and page refreshes).
   useEffect(() => { if (cartReady) syncStock(); }, [cartReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!cartReady) return; // before the restore above has run, "null" must not wipe the saved item
+    try { buyNowItem ? sessionStorage.setItem("ek_buynow", JSON.stringify(buyNowItem)) : sessionStorage.removeItem("ek_buynow"); } catch {}
+  }, [buyNowItem, cartReady]);
   useEffect(() => { try { localStorage.setItem("ek_cart", JSON.stringify(cart)); } catch {} }, [cart]);
 
   const key = (i: { id: number; size: string }) => `${i.id}|${i.size}`;
@@ -131,7 +140,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     wishlist, toggleWish,
     cart, cartCount: cart.reduce((s, i) => s + i.qty, 0), cartTotal: cart.reduce((s, i) => s + i.qty * i.price, 0),
     addToCart, syncStock, setQty, removeItem, clearCart: () => setCart([]),
-    buyNow: (i) => setBuyNowItem(i), resetBuyNow: () => setBuyNowItem(null),
+    cartReady, buyNow: (i) => setBuyNowItem(i), resetBuyNow: () => setBuyNowItem(null),
     checkoutItems: buyNowItem ? [buyNowItem] : cart,
   };
   return <C.Provider value={ctx}>{children}</C.Provider>;
