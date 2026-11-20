@@ -1,6 +1,7 @@
 import { inr } from "./types";
 import { db } from "./db";
-import { formatTelegramOrder, telegramCopyButtons, type TgOrder } from "./telegramFormat";
+import type { Client } from "@libsql/client";
+import { formatTelegramOrder, telegramKeyboard, type TgOrder } from "./telegramFormat";
 
 /**
  * Alert to the shop owner when an order is placed, on every channel that is configured:
@@ -40,16 +41,12 @@ export async function notifyNewOrder(o: { id: number; adminUrl?: string; paidOnl
     const text = lines.join("\n").slice(0, 1500); // keep well inside WhatsApp / URL / Telegram limits
 
     // Telegram gets a nicer layout (bold headings + aligned item table); WhatsApp keeps the plain text above.
-    const tgOrder: TgOrder | null = telegram ? {
-      id: o.id, payment: online ? (o.paidOnline ? "online-paid" : "online-pending") : "cod",
-      name: String(ord.customer_name), phone: String(ord.phone), house: String(ord.house_name), street: String(ord.street_name), city: String(ord.city), state: String(ord.state), pincode: String(ord.pincode),
-      items: items.map((i) => ({ title: String(i.title), size: i.size ? String(i.size) : "", qty: Number(i.qty), price: Number(i.price) })), total: Number(ord.total), adminUrl: o.adminUrl,
-    } : null;
+    const tgOrder = telegram ? await loadTgOrder(c, o.id, { paidOnline: o.paidOnline, adminUrl: o.adminUrl }) : null;
 
     // Channels are independent: one failing never stops the other, and neither can affect the order (it is already saved).
     await Promise.all([
       whatsapp ? sendWhatsApp(waPhone!, waKey!, text) : null,
-      telegram ? sendTelegram(tgToken!, tgChats, formatTelegramOrder(tgOrder!), telegramCopyButtons(tgOrder!)) : null,
+      telegram ? sendTelegram(tgToken!, tgChats, formatTelegramOrder(tgOrder!), telegramKeyboard(tgOrder!, { actions: statusButtonsOn() })) : null,
     ]);
   } catch (e) {
     console.error("Order notification failed:", (e as Error).message);
@@ -84,4 +81,21 @@ async function sendTelegram(token: string, chats: string[], html: string, markup
       if (!r.ok) console.error(`Telegram notification to ${chat} failed: HTTP ${r.status} ${(await r.text().catch(() => "")).slice(0, 150)}`); // never log the URL: it contains the bot token
     } catch (e) { console.error(`Telegram notification to ${chat} failed:`, (e as Error).name); } // error text can echo the URL, so only the type is logged
   }));
+}
+
+/** Status buttons only work when the Telegram webhook is set up (TELEGRAM_WEBHOOK_SECRET), so they are shown only then. */
+export const statusButtonsOn = () => !!process.env.TELEGRAM_WEBHOOK_SECRET && !!process.env.TELEGRAM_BOT_TOKEN;
+
+/** The order as the Telegram message needs it (also used to re-draw the message after a status button is tapped). */
+export async function loadTgOrder(c: Client, id: number, o: { paidOnline?: boolean; adminUrl?: string } = {}): Promise<TgOrder | null> {
+  const ord = (await c.execute({ sql: "SELECT * FROM orders WHERE id = ?", args: [id] })).rows[0];
+  if (!ord) return null;
+  const items = (await c.execute({ sql: "SELECT title, size, qty, price FROM order_items WHERE order_id = ? ORDER BY id", args: [id] })).rows;
+  const online = ord.payment_method === "online";
+  const paid = o.paidOnline || ord.payment_status === "Paid";
+  return {
+    id, payment: online ? (paid ? "online-paid" : "online-pending") : "cod", status: String(ord.status),
+    name: String(ord.customer_name), phone: String(ord.phone), house: String(ord.house_name), street: String(ord.street_name), city: String(ord.city), state: String(ord.state), pincode: String(ord.pincode),
+    items: items.map((i) => ({ title: String(i.title), size: i.size ? String(i.size) : "", qty: Number(i.qty), price: Number(i.price) })), total: Number(ord.total), adminUrl: o.adminUrl,
+  };
 }
