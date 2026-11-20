@@ -11,6 +11,12 @@ export async function getSavedAddress(c: Client, userId: number): Promise<(Addre
   return r ? { id: Number(r.id), customer_name: String(r.full_name), phone: String(r.phone), house_name: String(r.house_name), street_name: String(r.street_name), city: String(r.city), state: String(r.state), pincode: String(r.pincode) } : null;
 }
 
+/** Fallback for a customer with no saved address yet: the address they used on their latest order (one small query). */
+export async function getLastOrderAddress(c: Client, userId: number): Promise<Address | null> {
+  const r = (await c.execute({ sql: "SELECT customer_name, phone, house_name, street_name, city, state, pincode FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 1", args: [userId] })).rows[0];
+  return r ? { customer_name: String(r.customer_name), phone: String(r.phone), house_name: String(r.house_name), street_name: String(r.street_name), city: String(r.city), state: String(r.state), pincode: String(r.pincode) } : null;
+}
+
 export const sameAddress = (a: Address, b: Address) => ADDRESS_KEYS.every((k) => a[k].trim().toLowerCase() === b[k].trim().toLowerCase());
 
 /** Creates or updates the user's saved address and keeps users.name equal to the address Full Name. Returns the address id. */

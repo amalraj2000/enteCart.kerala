@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
-import { getSavedAddress, saveAddress } from "@/lib/addresses";
+import { getLastOrderAddress, getSavedAddress, saveAddress } from "@/lib/addresses";
 import { cleanAddress, firstError, validateAddress } from "@/lib/validate";
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export async function GET() {
   const u = await getUser();
   if (!u) return bad("Login required", 401);
   const c = await db();
-  const a = await getSavedAddress(c, u.id);
+  const a = (await getSavedAddress(c, u.id)) ?? (await getLastOrderAddress(c, u.id)); // checkout prefill: saved address, else the one from their last order
   return NextResponse.json({ address: a ? { customer_name: a.customer_name, phone: a.phone, house_name: a.house_name, street_name: a.street_name, city: a.city, state: a.state, pincode: a.pincode } : null });
 }
 

@@ -62,9 +62,15 @@ export default async function Footer() {
           </ul>
         </div>
       </div>
-      <div className="border-t px-4 py-3 text-center text-xs text-gray-500">© {new Date().getFullYear()} enteCart.kerala · All rights reserved</div>
+      <div className="border-t px-4 py-3 text-center text-xs text-gray-500">
+        <p>© {new Date().getFullYear()} enteCart.kerala · All rights reserved</p>
+        <p className="mt-1">A product of <a href="https://softdestiny.vercel.app/" target="_blank" rel="noopener noreferrer" className="font-medium text-gray-700 underline-offset-2 hover:text-brand-700 hover:underline">SoftDestiny Innovation Software Solution</a></p>
+      </div>
     </footer>
   );
-  const slim = <footer className="border-t bg-white py-6 text-center text-sm text-gray-500">© enteCart.kerala · All rights reserved</footer>;
+  const slim = <footer className="border-t bg-white py-6 text-center text-sm text-gray-500">
+      <p>© enteCart.kerala · All rights reserved</p>
+      <p className="mt-1 text-xs">A product of <a href="https://softdestiny.vercel.app/" target="_blank" rel="noopener noreferrer" className="font-medium text-gray-700 underline-offset-2 hover:text-brand-700 hover:underline">SoftDestiny Innovation Software Solution</a></p>
+    </footer>;
   return <FooterSwitch full={full} slim={slim} />;
 }

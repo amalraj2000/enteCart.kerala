@@ -16,9 +16,8 @@ export default async function Success({ params }: { params: Promise<{ id: string
     const own = await resolveOwnOrder(c, user.id, id);
     if (own) {
       if (own.publicId && own.publicId !== id) redirect(`/order-success/${own.publicId}`); // old numeric link → opaque address
-      const o = (await c.execute({ sql: "SELECT payment_method FROM orders WHERE id = ?", args: [own.id] })).rows[0];
-      found = !!o; shown = String(own.id); // the customer-facing order NUMBER; only the link is opaque
-      if (o?.payment_method === "online") { online = true; paid = (await reconcilePayment(c, own.id)) === "Paid"; }
+      found = true; shown = String(own.id); // the customer-facing order NUMBER; only the link is opaque
+      if (own.paymentMethod === "online") { online = true; paid = (await reconcilePayment(c, own.id)) === "Paid"; }
     }
   }
   // Never show "Order placed!" for an order that doesn't exist or isn't yours (e.g. a typed/refreshed URL).

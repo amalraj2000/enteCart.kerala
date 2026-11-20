@@ -49,16 +49,23 @@ function Checkout() {
   const placing = useRef(false);
   const [method, setMethod] = useState<"cod" | "online">("cod");
   const [loaded, setLoaded] = useState(false);
+  const [placed, setPlaced] = useState<"cod" | "online" | null>(null); // the order exists: show a confirmation instead of a flash of the emptied cart
   const [stockOk, setStockOk] = useState<boolean | null>(null); // null = still checking live stock, false = couldn't check
   const [onlineOk, setOnlineOk] = useState(false); // owner's switch (Admin → Payments) + Razorpay configured
   useEffect(() => { fetch("/api/payments/status", { cache: "no-store" }).then((r) => r.json()).then((d) => { setOnlineOk(!!d.online); if (!d.online) setMethod("cod"); }).catch(() => {}); }, []);
 
-  // Prefill: name from the account, everything else from the saved address / most recent order.
+  // Prefill: the saved address (the server falls back to the address of the last order) in ONE request. It starts the moment the page opens,
+  // in parallel with the login check, instead of waiting for it — and the old second request (the whole order history) is gone.
+  const addrPre = useRef<Promise<{ address: Record<string, string> | null } | null> | null>(null);
+  const getAddress = () => fetch("/api/auth/address", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  useEffect(() => { addrPre.current = getAddress(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!user) return;
     const accountName = user.name || "";
-    Promise.all([fetch("/api/auth/address").then((r) => r.json()), fetch("/api/orders").then((r) => r.json())]).then(([a, d]) => {
-      const last = a.address || d.orders?.[0];
+    (async () => {
+      let a = await addrPre.current; addrPre.current = null;
+      if (!a) a = await getAddress(); // the early request ran before login finished (or failed): ask again now
+      const last = a?.address;
       setForm((f) => ({
           customer_name: accountName || last?.customer_name || "",
           phone: last?.phone || user.phone || "",
@@ -66,7 +73,7 @@ function Checkout() {
           state: last?.state || "Kerala", pincode: last?.pincode || "",
           ...Object.fromEntries(Object.entries(f).filter(([k, v]) => v && k !== "state")),
       }));
-    }).finally(() => setLoaded(true));
+    })().finally(() => setLoaded(true));
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Once the saved address has loaded: if it's incomplete (new customer), open the address form straight away.
   useEffect(() => { if (loaded) setEditAddr(!!firstError(validateAddress(cleanAddress(form)))); }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -109,6 +116,15 @@ function Checkout() {
   const saved = mrp - total;
   const count = checkoutItems.reduce((s, i) => s + i.qty, 0);
 
+  if (placed) return (
+    <div className="card mx-auto max-w-md p-10 text-center" role="status" aria-live="polite">
+      {placed === "cod"
+        ? <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-3xl text-brand-700" aria-hidden>✓</span>
+        : <div className="mx-auto h-16 w-16 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600" aria-hidden />}
+      <h1 className="mt-4 text-2xl font-bold text-brand-700">{placed === "cod" ? "Order placed!" : "Order created"}</h1>
+      <p className="mt-2 text-gray-600">{placed === "cod" ? "Taking you to your order…" : "Complete your payment in the secure window."}</p>
+    </div>
+  );
   if (!checkoutItems.length) return <p className="card p-8 text-center text-gray-600">Nothing to checkout. <a className="text-brand-700 underline" href="/">Go shopping</a></p>;
   if (authReady && !user)
     return <div className="card p-8 text-center"><p className="mb-3">Please log in to place your order.</p><button className="btn-primary" onClick={() => openAuth()}>Login / Register</button></div>;
@@ -147,8 +163,11 @@ function Checkout() {
     // The order exists now (stock reserved). Buy Now leaves the cart untouched; a normal checkout empties it.
     const finish = () => { if (new URLSearchParams(location.search).get("buynow")) resetBuyNow(); else clearCart(); };
     if (method === "cod") {
-      setBusy(false); toast.success("Order placed successfully!"); finish(); return router.replace(`/order-success/${d.pid}`);
+      // Show the confirmation first, THEN empty the cart and leave (emptying it first flashed "Nothing to checkout" until the next page loaded).
+      // The button stays disabled until we have navigated, so it can't be pressed twice.
+      setPlaced("cod"); toast.success("Order placed successfully!"); finish(); return router.replace(`/order-success/${d.pid}`);
     }
+    setPlaced("online"); // the cart is emptied below, so keep showing something sensible behind the payment window
     const clearPending = () => { try { sessionStorage.removeItem("ek_pay_order"); } catch {} };
     try { sessionStorage.setItem("ek_pay_order", String(d.pid)); } catch {}
     try {

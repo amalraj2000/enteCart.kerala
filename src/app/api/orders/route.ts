@@ -62,25 +62,25 @@ export async function POST(req: Request) {
   const { items: lines, error } = validateOrderItems(b.items);
   if (error) return bad(error);
   const c = await db();
-  // Anti-spam: at most 10 orders per 10 minutes per customer. Counted from the orders table itself — a plain read, no extra write
-  // on every checkout, and exact across all servers. (Attempts that fail, e.g. sold out, don't count.)
-  const recent = Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND created_at > datetime('now', '-10 minutes')", args: [user.id] })).rows[0].n);
-  if (recent >= 10 || !(await rateLimit(`order:${user.id}`, 10, 600))) return bad("Too many orders in a short time. Please wait a few minutes.", 429); // the 2nd check is an atomic counter, so parallel requests can't slip past
-  // Cash-on-delivery orders hold stock until the shop acts on them, so a customer can only have a few waiting at once.
-  if (!online) {
-    const open = Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND payment_method = 'cod' AND status = 'Placed'", args: [user.id] })).rows[0].n);
-    if (open >= MAX_OPEN_COD) return bad(`You already have ${MAX_OPEN_COD} Cash on Delivery orders waiting for confirmation. Please wait for them to be confirmed, or pay online.`, 429);
-  }
-  // Same idea for online orders: stock is held for 30 min while unpaid, so one account can't tie up inventory with abandoned payments.
-  if (online) {
-    const unpaid = Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND payment_method = 'online' AND payment_status = 'Unpaid' AND status = 'Placed'", args: [user.id] })).rows[0].n);
-    if (unpaid >= MAX_OPEN_COD) return bad(`You have ${MAX_OPEN_COD} online orders waiting for payment. Please pay or cancel them first.`, 429);
-  }
-  await expireUnpaidOrders(c); // give back stock held by abandoned online payments (at most once a minute per server)
+  await expireUnpaidOrders(c); // give back stock held by abandoned online payments (at most once a minute per server: usually instant)
 
-  // 1) Prices, titles, sizes and stock always come from the DB — never from the browser. ONE query for all cart lines.
+  // The anti-spam checks and the price/stock read don't depend on each other, so they run TOGETHER (one wait instead of four in a row).
+  //  • At most 10 orders per 10 minutes per customer: counted from the orders table itself, plus an atomic counter so parallel requests can't slip past.
+  //  • Open orders waiting on the shop (COD) or on payment (online) are capped, so nobody can tie up stock.
+  //  • Prices, titles, sizes and stock always come from the DB — never from the browser. ONE query for all cart lines.
   const ids = [...new Set(lines.map((l) => l.id))];
-  const prows = (await c.execute({ sql: `SELECT p.* FROM products p ${CATEGORY_JOIN} WHERE p.id IN (${ids.map(() => "?").join(",")}) AND ${VISIBLE}`, args: ids })).rows;
+  const [recentRes, rateOk, openRes, prodRes] = await Promise.all([
+    c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND created_at > datetime('now', '-10 minutes')", args: [user.id] }),
+    rateLimit(`order:${user.id}`, 10, 600),
+    c.execute(online
+      ? { sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND payment_method = 'online' AND payment_status = 'Unpaid' AND status = 'Placed'", args: [user.id] }
+      : { sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND payment_method = 'cod' AND status = 'Placed'", args: [user.id] }),
+    c.execute({ sql: `SELECT p.* FROM products p ${CATEGORY_JOIN} WHERE p.id IN (${ids.map(() => "?").join(",")}) AND ${VISIBLE}`, args: ids }),
+  ]);
+  if (Number(recentRes.rows[0].n) >= 10 || !rateOk) return bad("Too many orders in a short time. Please wait a few minutes.", 429);
+  if (Number(openRes.rows[0].n) >= MAX_OPEN_COD)
+    return bad(online ? `You have ${MAX_OPEN_COD} online orders waiting for payment. Please pay or cancel them first.` : `You already have ${MAX_OPEN_COD} Cash on Delivery orders waiting for confirmation. Please wait for them to be confirmed, or pay online.`, 429);
+  const prows = prodRes.rows;
   const byId = new Map(prows.map((p) => [Number(p.id), p]));
   const items: { id: number; title: string; price: number; size: string; qty: number; image_url: string }[] = [];
   const need = new Map<number, number>();
