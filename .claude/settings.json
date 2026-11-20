@@ -4,7 +4,9 @@
       "Bash(git log *)",
       "Bash(node -e \"require\\('sharp'\\);console.log\\('sharp ok'\\)\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" localhost:3000/)",
-      "Bash(curl -s localhost:3000/)"
+      "Bash(curl -s localhost:3000/)",
+      "Bash(openssl rand *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X POST https://ente-cart-kerala.vercel.app/api/telegram/webhook -H \"content-type: application/json\" -d '{}')"
     ]
   }
 }
