@@ -46,8 +46,8 @@ Dashboard (deliberately minimal: 4 tiles — orders to process, orders today, re
 
 ## Order & payment flow (most intricate part)
 - Order statuses: `Placed → Confirmed → Shipped → Delivered`, or `Cancelled` (`ORDER_STATUSES` in `lib/types.ts`). `orders.payment_method` = `cod|online`; `payment_status` = `Pending`(COD) | `Unpaid` | `Paid` | `Refunded`.
-- `POST /api/orders`: re-reads prices/stock from DB (never trusts client), reserves stock atomically (`UPDATE … WHERE stock >= ?`), snapshots address + item title/price, links saved address, rate-limited. COD → WhatsApp alert immediately (`lib/notify.ts`, CallMeBot, `after()`).
-- Online: `/api/payments/create` makes Razorpay order → popup (`lib/payClient.ts`) → `/api/payments/verify` (HMAC signature) → `lib/payments.ts markPaid` (idempotent; sends WhatsApp once). Only ids/amount/method stored, never card data.
+- `POST /api/orders`: re-reads prices/stock from DB (never trusts client), reserves stock atomically (`UPDATE … WHERE stock >= ?`), snapshots address + item title/price, links saved address, rate-limited. COD → owner alert immediately on WhatsApp (CallMeBot) and/or Telegram (bot) — whichever is configured (`lib/notify.ts`, `after()`).
+- Online: `/api/payments/create` makes Razorpay order → popup (`lib/payClient.ts`) → `/api/payments/verify` (HMAC signature) → `lib/payments.ts markPaid` (idempotent; sends the WhatsApp/Telegram alert once). Only ids/amount/method stored, never card data.
 - Safety nets: `lib/reconcilePayment.ts` (asks Razorpay if paid when browser never reported; refunds if order already cancelled), `lib/expireUnpaid.ts` (unpaid online orders auto-cancelled after 30 min, stock restored, ≤1/min/instance), `lib/refund.ts` (claims payment row so no double refund; failure shows "Refund due" in admin), `lib/orderStock.ts` (`restockOrder` / `reserveOrder` on cancel/reopen).
 - Stock is **per product** (all sizes share it).
 
@@ -69,7 +69,7 @@ Tables: `users`, `addresses`, `products`(+`original_price`,`status`,`created_by`
 Header, MobileNav, Footer(+FooterSwitch), AdminMenu, AuthModal, BannerSlider, ProductCard, CardSlideshow, Gallery, BuyPanel, WishlistButton, Img (responsive via `lib/imgSrc.ts`), OrderList/OrderRow/OrderDetail, PayNow, Pagination, Toaster (`toast.success/error`), FieldError, Req, InfoTip, ShopLoader, Pwa, Providers (auth + cart + wishlist context).
 
 ## Env vars
-`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_WHATSAPP`, `CALLMEBOT_API_KEY`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (see `.env.example`; Razorpay test keys = no real money; WhatsApp/Razorpay features no-op when unset).
+`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_WHATSAPP`, `CALLMEBOT_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (comma-separated ok), `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (see `.env.example`; Razorpay test keys = no real money; WhatsApp/Razorpay features no-op when unset).
 
 ## Conventions
 - Path alias `@/` → `src/`. API routes `export const dynamic = "force-dynamic"`; errors via `bad(msg, status)`.
