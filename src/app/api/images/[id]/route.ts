@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const w = Number(new URL(req.url).searchParams.get("w"));
   if (w && (IMG_WIDTHS as readonly number[]).includes(w)) {
     try {
-      const out = await sharp(original).rotate().resize({ width: w, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+      const out = await sharp(original, { limitInputPixels: 24_000_000 }).rotate().resize({ width: w, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
       return new Response(new Uint8Array(out), { headers: { ...headers, "Content-Type": "image/webp", Vary: "Accept" } });
     } catch { /* fall through: serve the original rather than a broken picture */ }
   }

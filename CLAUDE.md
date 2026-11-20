@@ -15,7 +15,7 @@ Kerala e-commerce shop. **Next.js 15 App Router + React 19 + TypeScript + Tailwi
 - Changing/deleting a *super admin* (login, status, password, role) needs the actor's own password (`confirm_password`).
 - Order status moves are forward-only (`NEXT` map in `api/admin/orders/[id]`); max 3 open COD orders per customer; qty ≤20 per line.
 - Product edit sends `stock_base`; server applies the stock *delta*, not an overwrite.
-- `POST /api/payments/webhook` (HMAC, `RAZORPAY_WEBHOOK_SECRET`) records captured payments; CSP is Report-Only until verified clean.
+- `POST /api/payments/webhook` (HMAC, `RAZORPAY_WEBHOOK_SECRET`) records captured payments; CSP is now enforced (single header in `next.config.mjs`); add any new third-party domain there.
 
 ## SEO
 `lib/site.ts` (`siteUrl()` from `SITE_URL`, `snippet`, `jsonLd`), `app/robots.ts`, `app/sitemap.ts` (visible products + active categories + info pages), per-product `generateMetadata` + Product JSON-LD, category/search metadata on `/`, Organization/WebSite JSON-LD on home. Private pages get `X-Robots-Tag: noindex` via `next.config.mjs`. Set `SITE_URL` in production.

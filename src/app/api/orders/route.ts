@@ -70,6 +70,11 @@ export async function POST(req: Request) {
     const open = Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND payment_method = 'cod' AND status = 'Placed'", args: [user.id] })).rows[0].n);
     if (open >= MAX_OPEN_COD) return bad(`You already have ${MAX_OPEN_COD} Cash on Delivery orders waiting for confirmation. Please wait for them to be confirmed, or pay online.`, 429);
   }
+  // Same idea for online orders: stock is held for 30 min while unpaid, so one account can't tie up inventory with abandoned payments.
+  if (online) {
+    const unpaid = Number((await c.execute({ sql: "SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND payment_method = 'online' AND payment_status = 'Unpaid' AND status = 'Placed'", args: [user.id] })).rows[0].n);
+    if (unpaid >= MAX_OPEN_COD) return bad(`You have ${MAX_OPEN_COD} online orders waiting for payment. Please pay or cancel them first.`, 429);
+  }
   await expireUnpaidOrders(c); // give back stock held by abandoned online payments (at most once a minute per server)
 
   // 1) Prices, titles, sizes and stock always come from the DB — never from the browser. ONE query for all cart lines.

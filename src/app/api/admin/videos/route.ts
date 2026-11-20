@@ -20,9 +20,20 @@ export async function POST(req: Request) {
   if (!(await rateLimit("admin-video", 20, 600))) return bad("Too many uploads. Please wait a few minutes.", 429);
   const declared = Number(req.headers.get("content-length") || 0);
   if (declared > VIDEO_MAX_BYTES) return bad("Video is too large (max 4 MB)", 413);
-  const buf = Buffer.from(await req.arrayBuffer().catch(() => new ArrayBuffer(0)));
+  // Read in chunks and stop at the cap, so a chunked upload with no Content-Length can't fill memory.
+  const chunks: Uint8Array[] = []; let got = 0;
+  try {
+    const reader = req.body?.getReader();
+    if (reader) for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      got += value.byteLength;
+      if (got > VIDEO_MAX_BYTES) { await reader.cancel().catch(() => {}); return bad("Video is too large (max 4 MB)", 413); }
+      chunks.push(value);
+    }
+  } catch { return bad("No video received"); }
+  const buf = Buffer.concat(chunks);
   if (!buf.length) return bad("No video received");
-  if (buf.length > VIDEO_MAX_BYTES) return bad("Video is too large (max 4 MB)", 413);
   const type = sniff(buf);
   if (!type) return bad("Only MP4 or WebM videos are allowed");
 

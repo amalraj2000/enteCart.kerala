@@ -27,4 +27,9 @@ export async function readJson(req: Request, max = 400_000): Promise<Record<stri
   } catch { return null; }
 }
 
-export const clientIp = (req: Request) => req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.headers.get("x-real-ip") || "unknown";
+/**
+ * The caller's IP, used as a rate-limit key. Platform-set headers come first: on Vercel the client cannot forge them, whereas the FIRST
+ * x-forwarded-for entry is whatever the client sent — an attacker could rotate it to dodge every limit. Fallback: the LAST (proxy-appended) entry.
+ */
+export const clientIp = (req: Request) =>
+  req.headers.get("x-vercel-forwarded-for")?.split(",")[0].trim() || req.headers.get("x-real-ip")?.trim() || req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() || "unknown";
