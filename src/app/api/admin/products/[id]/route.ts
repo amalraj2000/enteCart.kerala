@@ -55,6 +55,8 @@ export async function DELETE(_: Request, { params }: Ctx) {
   const denied = await guard(me, id);
   if (denied) return denied;
   const c = await db();
+  await c.execute({ sql: "DELETE FROM review_images WHERE review_id IN (SELECT id FROM reviews WHERE product_id = ?)", args: [id] }); // reviews go with their product
+  await c.execute({ sql: "DELETE FROM reviews WHERE product_id = ?", args: [id] });
   await c.execute({ sql: "DELETE FROM wishlist WHERE product_id = ?", args: [id] });
   await c.execute({ sql: "UPDATE order_items SET product_id = NULL WHERE product_id = ?", args: [id] }); // past orders keep title/price/photo
   const r = await c.execute({ sql: "DELETE FROM products WHERE id = ?", args: [id] });

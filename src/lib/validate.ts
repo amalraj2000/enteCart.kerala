@@ -178,6 +178,25 @@ export function validateOrderItems(raw: unknown): { items: CartLine[]; error: st
 }
 export const validateStatus = (v: unknown, allowed: string[] = ORDER_STATUSES) => typeof v === "string" && allowed.includes(v);
 
+// ---------- product reviews ----------
+export const REVIEW_COMMENT_MIN = 3, REVIEW_COMMENT_MAX = 1000, REVIEW_MAX_PHOTOS = 4;
+export const REVIEW_PHOTO_RE = /^\/api\/review-images\/(\d{1,12})$/;
+export const cleanReview = (b: Record<string, unknown>) => ({
+  rating: typeof b.rating === "number" ? b.rating : NaN,
+  comment: typeof b.comment === "string" ? b.comment.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim() : "",
+  images: [...new Set((Array.isArray(b.images) ? b.images : []).map(str).filter(Boolean))] as string[],
+});
+export function validateReview(r: ReturnType<typeof cleanReview>): Errors {
+  const e: Errors = {};
+  if (!Number.isInteger(r.rating) || r.rating < 1 || r.rating > 5) e.rating = "Please choose a star rating (1 to 5)";
+  if (!r.comment) e.comment = "Please write a short review";
+  else if (r.comment.length < REVIEW_COMMENT_MIN) e.comment = `Review must be at least ${REVIEW_COMMENT_MIN} characters`;
+  else if (r.comment.length > REVIEW_COMMENT_MAX) e.comment = `Review must be at most ${REVIEW_COMMENT_MAX} characters`;
+  if (r.images.length > REVIEW_MAX_PHOTOS) e.images = `At most ${REVIEW_MAX_PHOTOS} photos`;
+  else if (r.images.some((u) => !REVIEW_PHOTO_RE.test(u))) e.images = "A photo is invalid — please upload it again";
+  return e;
+}
+
 // ---------- categories ----------
 export const CATEGORY_NAME_MAX = 30;
 export const cleanCategoryName = (v: unknown) => str(v).replace(/\s+/g, " ");

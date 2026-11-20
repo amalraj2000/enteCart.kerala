@@ -8,6 +8,7 @@ const LINKS: [string, string, string, boolean?][] = [
   ["/admin/categories", "Categories", "🏷️"],
   ["/admin/products", "Products", "📦"],
   ["/admin/orders", "Orders", "🧾"],
+  ["/admin/reviews", "Reviews", "⭐"],
   ["/admin/banners", "Banners", "🖼️"],
   ["/admin/users", "Users", "👥"],
   ["/admin/payments", "Payments", "💳", true], // owner-only

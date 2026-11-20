@@ -8,6 +8,8 @@ import PayNow from "@/components/PayNow";
 import InfoTip from "@/components/InfoTip";
 import { toast } from "@/components/Toaster";
 import { CANCEL_POLICY, canCancel } from "@/lib/orderPolicy";
+import ReviewBox from "@/components/ReviewBox";
+import type { MyReview } from "@/lib/reviews";
 import type { FullOrder } from "@/lib/orderItems";
 
 export default function MyOrderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +18,10 @@ export default function MyOrderPage({ params }: { params: Promise<{ id: string }
   const { user, authReady, openAuth } = useApp();
   const [o, setO] = useState<FullOrder | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  // Reviews: only meaningful once the order is Delivered (the server checks that again on every submit).
+  const [rv, setRv] = useState<{ enabled: boolean; canReview: boolean; reviews: MyReview[] } | null>(null);
+  const loadReviews = () => fetch(`/api/reviews/mine?order=${id}`).then((r) => (r.ok ? r.json() : null)).then(setRv).catch(() => setRv(null));
+  useEffect(() => { if (user && o?.status === "Delivered") loadReviews(); }, [user, o?.status, id]); // eslint-disable-line react-hooks/exhaustive-deps
   const load = () => fetch(`/api/orders/${id}`).then((r) => r.json()).then((d) => { setO(d.order || null); if (d.order?.public_id && d.order.public_id !== id) router.replace(`/orders/${d.order.public_id}`); }); // old numeric link → opaque address
   useEffect(() => { if (user) load(); }, [user, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -52,7 +58,9 @@ export default function MyOrderPage({ params }: { params: Promise<{ id: string }
     <div className="space-y-4">
       <Link href="/orders" className="text-sm font-medium text-brand-700 hover:underline">← Back to my orders</Link>
       {online && o.payment_status === "Unpaid" && o.status !== "Cancelled" && <PayNow orderId={o.id} onDone={load} />}
-      <OrderDetail o={o} actions={actions} />
+      <OrderDetail o={o} actions={actions} itemExtra={(i) => o.status === "Delivered" && i.id && rv
+        ? <ReviewBox productId={i.id} title={i.title} review={rv.reviews.find((x) => x.product_id === i.id) ?? null} enabled={rv.enabled} canReview={rv.canReview} onChanged={loadReviews} />
+        : null} />
       {cancellable && <p className="text-xs text-gray-500">You can cancel this order only while it is “Placed”. Once it is confirmed, it can’t be cancelled and returns are not available.</p>}
     </div>
   );

@@ -12,6 +12,8 @@ import WishlistButton from "@/components/WishlistButton";
 import BuyPanel from "@/components/BuyPanel";
 import ShareButton from "@/components/ShareButton";
 import { SITE_NAME, jsonLd, siteUrl, snippet } from "@/lib/site";
+import ReviewsSection from "@/components/ReviewsSection";
+import { approvedReviews, reviewSummary, reviewsEnabled } from "@/lib/reviews";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   if (!isPublicId(id)) notFound();
   const p = (await getProduct(id)) as unknown as (Product & { category_name?: string | null }) | null; // cached — see lib/catalog.ts
   if (!p) notFound();
+  // Customer reviews: only APPROVED ones are ever loaded here. Skipped completely when the owner has switched reviews off.
+  const reviewsOn = await reviewsEnabled();
+  const [first, sum] = reviewsOn ? await Promise.all([approvedReviews(p.id, 0), reviewSummary(p.id)]) : [{ reviews: [], hasMore: false }, { avg: 0, count: 0 }];
   const base = siteUrl();
   const abs = (u: string) => (u.startsWith("/") ? base + u : u);
   const ld = {
@@ -48,6 +53,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     image: productImages(p).map((u) => abs(photo(u))),
     ...(p.category_name ? { category: p.category_name } : {}),
     brand: { "@type": "Brand", name: SITE_NAME },
+    ...(reviewsOn && sum.count > 0 ? { aggregateRating: { "@type": "AggregateRating", ratingValue: sum.avg, reviewCount: sum.count, bestRating: 5, worstRating: 1 } } : {}),
     offers: {
       "@type": "Offer", url: `${base}/product/${p.public_id}`, priceCurrency: "INR", price: Number(p.price).toFixed(2),
       availability: Number(p.stock) > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock", itemCondition: "https://schema.org/NewCondition",
@@ -77,5 +83,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         <BuyPanel product={p} />
       </div>
     </div>
+    <ReviewsSection productId={p.id} initial={{ enabled: reviewsOn, ...sum, ...first }} />
   </>);
 }

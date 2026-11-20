@@ -4,12 +4,12 @@ import { statusColor } from "./OrderList";
 import { SHOP_VENDOR } from "@/lib/staffLabel";
 import { formatIst } from "@/lib/istDate";
 import { payLabel } from "@/lib/payLabel";
-import type { FullOrder } from "@/lib/orderItems";
+import type { FullOrder, OrderItem } from "@/lib/orderItems";
 
 const STEPS = ["Placed", "Confirmed", "Shipped", "Delivered"];
 
 /** Full order view (no hooks, so usable from server and client components). `actions` renders in the header (e.g. status control). */
-export default function OrderDetail({ o, admin, actions }: { o: FullOrder; admin?: boolean; actions?: React.ReactNode }) {
+export default function OrderDetail({ o, admin, actions, itemExtra }: { o: FullOrder; admin?: boolean; actions?: React.ReactNode; itemExtra?: (item: OrderItem) => React.ReactNode }) {
   const cancelled = o.status === "Cancelled";
   const online = o.payment_method === "online";
   const step = STEPS.indexOf(o.status);
@@ -47,7 +47,8 @@ export default function OrderDetail({ o, admin, actions }: { o: FullOrder; admin
         <h2 className="border-b bg-gray-50 px-5 py-3 font-bold">Items ({count})</h2>
         <ul className="divide-y">
           {o.items.map((i, n) => (
-            <li key={n} className="flex items-center gap-4 p-4">
+            <li key={n} className="p-4">
+             <div className="flex items-center gap-4">
               <Img src={i.image_url} alt={i.title} sizes="80px" className="h-20 w-20 shrink-0 rounded-lg object-cover" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{i.title}</p>
@@ -57,6 +58,8 @@ export default function OrderDetail({ o, admin, actions }: { o: FullOrder; admin
                 <p className="mt-1 text-sm text-gray-500">{inr(i.price)} × {i.qty}</p>
               </div>
               <p className="font-semibold">{inr(i.price * i.qty)}</p>
+             </div>
+             {itemExtra?.(i)}
             </li>
           ))}
         </ul>

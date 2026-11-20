@@ -155,6 +155,30 @@ const BASE_SCHEMA = [
     created_by INTEGER, -- → users.id of who created it (no FK: stays after that admin is deleted)
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // Product reviews. One per customer per product (UNIQUE). Only status 'approved' is public. Photos live in review_images.
+  `CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    order_id INTEGER, -- the delivered order that made this review possible
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending', -- pending | approved | rejected
+    active INTEGER NOT NULL DEFAULT 1, -- admin switch: 0 = hidden from shoppers even if approved
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (user_id, product_id)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id, status, id)`,
+  `CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status, id)`,
+  `CREATE TABLE IF NOT EXISTS review_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    review_id INTEGER, -- NULL until the review is submitted
+    data TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_review_images_review ON review_images(review_id)`,
   `CREATE TABLE IF NOT EXISTS wishlist (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -282,6 +306,8 @@ export function db(): Promise<Client> {
       // round trip each and used to run on every serverless cold start. Bump SCHEMA_VERSION whenever the setup code below changes.
       const applied = (await c.execute("SELECT value FROM meta WHERE key = 'schema_applied'")).rows[0]?.value === SCHEMA_VERSION;
       if (!applied) await setupSchema(c);
+      await c.execute("ALTER TABLE reviews ADD COLUMN active INTEGER NOT NULL DEFAULT 1").catch(() => {}); // already exists (reviews created before the Active/Inactive switch)
+
       await ensureAdmin(c);
     })().catch((e) => {
       ready = null;
@@ -291,7 +317,7 @@ export function db(): Promise<Client> {
   return ready.then(getClient);
 }
 
-const SCHEMA_VERSION = "2026-11-video-2";
+const SCHEMA_VERSION = "2026-11-reviews-2";
 
 async function setupSchema(c: Client) {
       await migrateToRelational(c);
