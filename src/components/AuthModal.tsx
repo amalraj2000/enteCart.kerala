@@ -5,11 +5,11 @@ import { useApp } from "./Providers";
 import { toast } from "./Toaster";
 import Req from "./Req";
 import FieldError from "./FieldError";
-import { type Errors, firstError, validateAuth } from "@/lib/validate";
+import { type Errors, firstError, validateAuth, validateIdentifier } from "@/lib/validate";
 
 export default function AuthModal() {
   const { authOpen, closeAuth, setUser, afterAuth } = useApp();
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "quick">("login");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [errs, setErrs] = useState<Errors>({});
@@ -24,8 +24,23 @@ export default function AuthModal() {
   useEffect(() => { if (!authOpen) setNewHint(false); }, [authOpen]);
   if (!authOpen) return null;
 
+  async function quick() {
+    const msg = validateIdentifier(identifier);
+    setErrs(msg ? { identifier: msg } : {});
+    if (msg) return;
+    setBusy(true);
+    const r = await fetch("/api/auth/quick", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier }) });
+    const d = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (!r.ok) return toast.error(d.error || "Could not log in");
+    toast.success("Logged in successfully");
+    setUser(d.user); setIdentifier(""); setPassword(""); setErrs({});
+    afterAuth(); // carries on to wherever the customer was going (e.g. checkout)
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (mode === "quick") return quick();
     const ve = validateAuth({ identifier, password }, mode); // same rules the server enforces
     setErrs(ve);
     if (firstError(ve)) return;
@@ -68,8 +83,8 @@ export default function AuthModal() {
       <form onSubmit={submit} noValidate className="card max-h-[92vh] w-full max-w-sm space-y-4 overflow-y-auto p-5 sm:p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-brand-700">{mode === "login" ? "Welcome back" : "Register"}</h2>
-            <p className="text-sm text-gray-500">Use your 10-digit phone number or Gmail</p>
+            <h2 className="text-xl font-bold text-brand-700">{mode === "quick" ? "Continue without a password" : mode === "login" ? "Welcome back" : "Register"}</h2>
+            <p className="text-sm text-gray-500">{mode === "quick" ? "Just enter your phone number or Gmail" : "Use your 10-digit phone number or Gmail"}</p>
           </div>
           <button type="button" onClick={closeAuth} className="text-2xl leading-none text-gray-400 hover:text-gray-700" aria-label="Close">×</button>
         </div>
@@ -78,18 +93,30 @@ export default function AuthModal() {
           <input id="auth-id" className="input" placeholder="Phone number or Gmail" value={identifier} maxLength={80} autoComplete="username" onChange={(e) => setIdentifier(e.target.value)} autoFocus />
           <FieldError msg={errs.identifier} />
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="auth-pw">Password<Req /></label>
-          <input id="auth-pw" className="input" type="password" placeholder="Password (6–72 characters)" value={password} maxLength={72} autoComplete={mode === "login" ? "current-password" : "new-password"} onChange={(e) => setPassword(e.target.value)} />
-          <FieldError msg={errs.password} />
-        </div>
-        <button className="btn-primary w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Log in" : "Register"}</button>
-        <p className="text-center text-sm text-gray-600">
-          {mode === "login" ? "New here?" : "Already registered?"}{" "}
-          <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => { setMode(mode === "login" ? "register" : "login"); setErrs({}); setNewHint(false); }}>
-            {mode === "login" ? "Register" : "Log in"}
-          </button>
-        </p>
+        {mode === "quick" ? (
+          <>
+            <button className="btn-primary w-full" disabled={busy}>{busy ? "Please wait…" : "Continue"}</button>
+            <p className="text-center text-sm text-gray-600">
+              <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => { setMode("login"); setErrs({}); }}>Use a password instead</button>
+            </p>
+          </>
+        ) : (
+          <>
+          <div>
+            <label className="mb-1 block text-sm font-medium" htmlFor="auth-pw">Password<Req /></label>
+            <input id="auth-pw" className="input" type="password" placeholder="Password (6–72 characters)" value={password} maxLength={72} autoComplete={mode === "login" ? "current-password" : "new-password"} onChange={(e) => setPassword(e.target.value)} />
+            <FieldError msg={errs.password} />
+          </div>
+          <button className="btn-primary w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Log in" : "Register"}</button>
+          <p className="text-center text-sm text-gray-600">
+            {mode === "login" ? "New here?" : "Already registered?"}{" "}
+            <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => { setMode(mode === "login" ? "register" : "login"); setErrs({}); setNewHint(false); }}>
+              {mode === "login" ? "Register" : "Log in"}
+            </button>
+          </p>
+            <button type="button" className="w-full rounded-lg border border-brand-600 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50" onClick={() => { setMode("quick"); setErrs({}); setNewHint(false); }}>Continue without a password</button>
+          </>
+        )}
       </form>
     </div>
   );

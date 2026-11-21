@@ -6,7 +6,7 @@ import { toast } from "@/components/Toaster";
 import Pagination from "@/components/Pagination";
 import type { PageInfo } from "@/lib/paginate";
 
-type U = { id: number; name: string; email: string | null; phone: string | null; status: "active" | "inactive" | "blocked"; role: "user" | "admin"; created_at: string };
+type U = { id: number; name: string; email: string | null; phone: string | null; phone_from_address?: number; status: "active" | "inactive" | "blocked"; role: "user" | "admin"; created_at: string };
 const badge = { active: "bg-green-100 text-green-800", inactive: "bg-gray-200 text-gray-700", blocked: "bg-red-100 text-red-700" };
 
 export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: PageInfo; staffRole: "admin" | "subadmin" }) {
@@ -48,7 +48,7 @@ export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: P
               <div className="min-w-0 flex-1">
                 <Link href={`/admin/users/${u.id}`} className="block truncate font-semibold hover:text-brand-700">{u.name || "—"}</Link>
                 <p className="truncate text-sm text-gray-600">{u.email || "No email"}</p>
-                <p className="text-sm text-gray-600">{u.phone || "No phone"}</p>
+                <p className="text-sm text-gray-600">{u.phone || "No phone"}{u.phone && !!u.phone_from_address && <span className="ml-1 text-xs text-gray-400">(from address)</span>}</p>
               </div>
               <Status u={u} />
             </div>
@@ -69,7 +69,7 @@ export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: P
                 <td className="p-3">{u.id}</td>
                 <td className="p-3 font-medium"><Link href={`/admin/users/${u.id}`} className="hover:text-brand-700 hover:underline">{u.name || "—"}</Link></td>
                 <td className="p-3 text-gray-700">{u.email || "—"}</td>
-                <td className="p-3 text-gray-700">{u.phone || "—"}</td>
+                <td className="p-3 text-gray-700">{u.phone || "—"}{u.phone && !!u.phone_from_address && <span className="block text-[11px] text-gray-400" title="Not a login number: taken from the customer's saved address or latest order">from address</span>}</td>
                 <td className="p-3"><Status u={u} /></td>
                 <td className="whitespace-nowrap p-3 text-gray-600">{u.created_at.slice(0, 10)}</td>
                 <td className="p-3"><div className="flex flex-wrap justify-end gap-1.5"><Actions u={u} cls="!min-h-0 !px-2.5 !py-1 text-xs" /></div></td>

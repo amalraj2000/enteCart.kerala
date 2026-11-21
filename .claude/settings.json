@@ -8,7 +8,9 @@
       "Bash(openssl rand *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X POST https://ente-cart-kerala.vercel.app/api/telegram/webhook -H \"content-type: application/json\" -d '{}')",
       "Bash(mkdir -p *)",
-      "Bash(pkill -f \"next dev -p 3222\")"
+      "Bash(pkill -f \"next dev -p 3222\")",
+      "Bash(grep -i \"google\\\\|^auth$\")",
+      "Bash(grep -c \"^nodemailer$\")"
     ],
     "additionalDirectories": [
       "/Users/amalraj/Sites/enteCart.kerala/src/app/api/admin/admins/[id]"

@@ -3,7 +3,7 @@
 Kerala e-commerce shop. **Next.js 15 App Router + React 19 + TypeScript + Tailwind 3 + Turso/libSQL** (`@libsql/client`). Deploys to Vercel (region `bom1`). No filesystem writes in prod. Prices in ₹ (INR), dates in IST. Run: `npm run dev` / `build` / `lint`. No test suite.
 
 ## Roles
-- **Customer** (`users.role='user'`): login by email *or* phone; cookie `ek_session` (JWT, 30d, SameSite=Lax).
+- **Customer** (`users.role='user'`): login by email *or* phone with a password, or **"Continue without a password"** (`api/auth/quick`: type Gmail/phone → logged in, account created on first use with `password_set=0`; NO verification by design (owner's choice), so it only opens accounts that have no password, never staff/blocked/password accounts; rate-limited; Change-password tab hidden for these accounts); cookie `ek_session` (JWT, 30d, SameSite=Lax).
 - **Owner admin** (`role='admin'`): created from `ADMIN_EMAIL`/`ADMIN_PASSWORD` on first start; edits everything; only one who manages Admins/sub-admins.
 - **Sub admin / vendor** (`role='subadmin'`, `vendor_name` = "Sold by …"): can edit only rows they created (`created_by`); sees all orders but may change only orders containing their products (`lib/permissions.ts`).
 - Staff cookie `ek_admin` (JWT, 8h, SameSite=Strict), tied to a password fingerprint (`ph`) so password reset kills old sessions. Guards: `getUser`, `getAdmin`, `getSuperAdmin`, `isAdmin` in `lib/session.ts` (always re-check DB).

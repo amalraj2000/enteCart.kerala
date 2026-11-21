@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { CartItem } from "@/lib/types";
 import { toast } from "./Toaster";
 
-type User = { id: number; identifier: string; name?: string; email?: string | null; phone?: string | null; avatar?: string } | null;
+type User = { id: number; identifier: string; name?: string; email?: string | null; phone?: string | null; avatar?: string; noPassword?: boolean } | null;
 type Ctx = {
   user: User; authReady: boolean;
   openAuth: (cb?: () => void) => void; closeAuth: () => void; authOpen: boolean;
