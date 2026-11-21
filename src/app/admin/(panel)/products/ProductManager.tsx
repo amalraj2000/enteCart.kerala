@@ -213,7 +213,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
       <div className="card overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs text-gray-500">
-            <tr><th className="p-3">Photo</th><th className="p-3">Name</th><th className="p-3">Status</th><th className="p-3">Category</th><th className="p-3">Highlight</th><th className="p-3 text-right">Action</th></tr>
+            <tr><th className="p-3">Photo</th><th className="p-3">Name</th><th className="p-3">Status</th><th className="p-3">Category</th><th className="p-3">Stock</th><th className="p-3">Highlight</th><th className="p-3 text-right">Action</th></tr>
           </thead>
           <tbody className="divide-y">
             {products.map((p) => (
@@ -226,11 +226,12 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
                 </td>
                 <td className="min-w-[12rem] p-3">
                   <p className="font-medium">{p.title}</p>
-                  <p className="text-xs text-gray-500">{inr(p.price)}{discountPct(p.price, p.original_price) > 0 && <> <span className="line-through">{inr(Number(p.original_price))}</span> <span className="font-semibold text-green-700">{discountPct(p.price, p.original_price)}% off</span></>} · Stock {p.stock}</p>
+                  <p className="text-xs text-gray-500">{inr(p.price)}{discountPct(p.price, p.original_price) > 0 && <> <span className="line-through">{inr(Number(p.original_price))}</span> <span className="font-semibold text-green-700">{discountPct(p.price, p.original_price)}% off</span></>}</p>
                   <p className="text-xs text-gray-400">Added by <span className="font-medium text-gray-600">{p.added_by_name || "—"}</span>{p.product_link && <> · <a href={p.product_link} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-700 hover:underline">Product link ↗</a></>}</p>
                 </td>
                 <td className="p-3"><span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${p.status === "inactive" ? "bg-gray-200 text-gray-600" : "bg-green-100 text-green-800"}`}>{p.status === "inactive" ? "Inactive" : "Active"}</span></td>
                 <td className="p-3">{p.category_name ? <span className="whitespace-nowrap rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">{p.category_name}</span> : <span className="text-xs text-gray-400">Uncategorised</span>}</td>
+                <td className="p-3"><span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${Number(p.stock) === 0 ? "bg-red-100 text-red-700" : Number(p.stock) <= 5 ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-700"}`}>{Number(p.stock) === 0 ? "Out of stock" : p.stock}</span></td>
                 <td className="p-3">
                   <button type="button" role="switch" aria-checked={!!p.highlighted} aria-label={`Highlight ${p.title} on the home page`} disabled={p.editable === false}
                     onClick={() => toggleHighlight(p)} className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 ${p.highlighted ? "bg-brand-600" : "bg-gray-300"}`}>
@@ -244,7 +245,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
                 </td>
               </tr>
             ))}
-            {!products.length && <tr><td colSpan={6} className="p-6 text-center text-gray-500">No products.</td></tr>}
+            {!products.length && <tr><td colSpan={7} className="p-6 text-center text-gray-500">No products.</td></tr>}
           </tbody>
         </table>
       </div>
