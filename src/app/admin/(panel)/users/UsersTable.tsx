@@ -1,4 +1,5 @@
 "use client";
+import IconBtn from "@/components/IconBtn";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/Toaster";
@@ -29,8 +30,8 @@ export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: P
   const Actions = ({ u, cls }: { u: U; cls: string }) =>
     u.role !== "user" ? null : (
       <>
-        <Link href={`/admin/users/${u.id}/edit`} className={`btn-outline ${cls}`}>Edit</Link>
-        {owner && <button className={`btn-danger ${cls}`} onClick={() => remove(u)}>Delete</button>}
+        <IconBtn kind="edit" label="Edit customer" href={`/admin/users/${u.id}/edit`} />
+        {owner && <IconBtn kind="delete" label="Delete customer" onClick={() => remove(u)} />}
       </>
     );
 

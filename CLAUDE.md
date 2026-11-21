@@ -9,6 +9,7 @@ Kerala e-commerce shop. **Next.js 15 App Router + React 19 + TypeScript + Tailwi
 - Staff cookie `ek_admin` (JWT, 8h, SameSite=Strict), tied to a password fingerprint (`ph`) so password reset kills old sessions. Guards: `getUser`, `getAdmin`, `getSuperAdmin`, `isAdmin` in `lib/session.ts` (always re-check DB).
 
 ## Security rules added by the audit (keep following them)
+- **Login as sub admin** (super admin only, Admins list → "Login as" on an ACTIVE sub admin): `api/admin/admins/[id]/impersonate` issues a normal `ek_admin` token for the sub admin plus `imp`/`iph` (the super admin's id + password fingerprint). `getAdmin()` re-verifies that super admin on every request (exists, active, same password, target is a sub admin) or refuses the session, and returns `impersonator`. While impersonating, own password/profile changes are refused (`impersonationBlock`), owner-only APIs refuse (role is subadmin), and every admin page shows the "Switch back to Super admin" bar (`(panel)/SwitchBack.tsx` → `api/admin/impersonate/stop`).
 - **Every admin page must call `requireAdmin()` / `requireSuperAdmin()` (`lib/session.ts`) itself** — the admin layout is NOT a security boundary (RSC requests skip it).
 - Customer + staff sessions carry a password fingerprint `ph`; password change re-issues the session and ends all others.
 - Staff passwords ≥10 chars (`STAFF_PASSWORD_MIN`); login is rate-limited per IP+account and per account.

@@ -41,7 +41,7 @@ export default function OrdersView({ orders, counts, status, pi, scoped = false,
       </div>
       {orders.length === 0 && <div className="card p-10 text-center text-gray-500">No orders for this date. Try another date, or “All dates”.</div>}
       {orders.map((o) => (
-        <OrderRow key={`${o.id}-${o.status}`} o={o} href={`/admin/orders/${o.id}`} statusControl={o.editable === false ? <ViewOnly status={o.status} /> : <StatusSelect id={Number(o.id)} status={o.status} />} extra={<p className="text-sm text-gray-600">👤 {o.customer_name} · 📞 {o.phone}</p>} />
+        <OrderRow key={`${o.id}-${o.status}`} o={o} href={`/admin/orders/${o.id}`} iconView statusControl={o.editable === false ? <ViewOnly status={o.status} /> : <StatusSelect id={Number(o.id)} status={o.status} />} extra={<p className="text-sm text-gray-600">👤 {o.customer_name} · 📞 {o.phone}</p>} />
       ))}
       <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => href(status, p)} />
     </div>

@@ -71,8 +71,19 @@ export async function getAdmin() {
   const u = r.rows[0];
   // The session is tied to the current password: resetting it (by the owner, or by the person themself) ends every older session.
   if (u && s.ph !== pwTag(String(u.password))) return null;
-  return u ? { id: Number(u.id), identifier: String(u.email || u.phone || ""), role: String(u.role) as StaffRole, name: String(u.name || ""), vendor_name: String(u.vendor_name || "") } : null;
+  if (!u) return null;
+  // "Login as sub admin": the token also names the super admin who started it. It only counts while that super admin still exists,
+  // is active and has not changed their password, and only ever for a sub admin account — otherwise the whole session is refused.
+  let impersonator: { id: number; name: string } | undefined;
+  if (s.imp !== undefined) {
+    const o = (await c.execute({ sql: "SELECT id, name, password FROM users WHERE id = ? AND role = 'admin' AND status = 'active'", args: [Number(s.imp)] })).rows[0];
+    if (!o || s.iph !== pwTag(String(o.password)) || u.role !== "subadmin") return null;
+    impersonator = { id: Number(o.id), name: String(o.name || "Super admin") };
+  }
+  return { id: Number(u.id), identifier: String(u.email || u.phone || ""), role: String(u.role) as StaffRole, name: String(u.name || ""), vendor_name: String(u.vendor_name || ""), impersonator };
 }
+/** Refuses account-takeover style changes (own password / login details) while a super admin is viewing as a sub admin. */
+export const impersonationBlock = (a: { impersonator?: unknown }) => (a.impersonator ? "You are viewing as this sub admin — switch back to your super admin account first." : null);
 /** For pages: a logged-out / expired staff session is sent to the login. Layouts are NOT a security boundary in Next.js, so every admin page calls this itself. */
 export async function requireAdmin() {
   const me = await getAdmin();

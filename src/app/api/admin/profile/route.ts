@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAdmin } from "@/lib/session";
+import { getAdmin, impersonationBlock } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
 import { cleanProfile, firstError, validateProfile } from "@/lib/validate";
 
@@ -17,6 +17,8 @@ export async function GET() {
 export async function PUT(req: Request) {
   const a = await getAdmin();
   if (!a) return bad("Unauthorized", 401);
+  const blocked = impersonationBlock(a);
+  if (blocked) return bad(blocked, 403);
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
   const p = cleanProfile(b);

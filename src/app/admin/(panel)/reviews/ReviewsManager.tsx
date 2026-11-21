@@ -1,4 +1,5 @@
 "use client";
+import IconBtn from "@/components/IconBtn";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -98,9 +99,9 @@ export default function ReviewsManager({ reviews, pi, filter, filters, counts, e
                   </td>
                   <td className="p-3">
                     <div className="flex justify-end gap-1.5">
-                      <button className="btn-outline !px-3 !py-1.5" onClick={() => setModal({ kind: "view", id: r.id })} aria-label={`View review by ${r.user_name}`}>View</button>
-                      <button className="btn-outline !px-3 !py-1.5" onClick={() => setModal({ kind: "edit", id: r.id })} aria-label={`Edit review by ${r.user_name}`}>Edit</button>
-                      <button className="btn-danger !px-3 !py-1.5" disabled={busy === r.id} onClick={() => remove(r.id)} aria-label={`Delete review by ${r.user_name}`}>Delete</button>
+                      <IconBtn kind="view" label={`View review by ${r.user_name}`} onClick={() => setModal({ kind: "view", id: r.id })} />
+                      <IconBtn kind="edit" label={`Edit review by ${r.user_name}`} onClick={() => setModal({ kind: "edit", id: r.id })} />
+                      <IconBtn kind="delete" label={`Delete review by ${r.user_name}`} disabled={busy === r.id} onClick={() => remove(r.id)} />
                     </div>
                   </td>
                 </tr>

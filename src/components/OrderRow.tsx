@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Img from "./Img";
+import IconBtn from "./IconBtn";
 import { inr } from "@/lib/types";
 import { statusColor } from "./OrderList";
 import { formatIst } from "@/lib/istDate";
@@ -7,7 +8,7 @@ import { payLabel } from "@/lib/payLabel";
 import type { FullOrder } from "@/lib/orderItems";
 
 /** Compact order summary: photo, name, status, total and a View button. */
-export default function OrderRow({ o, href, extra, statusControl }: { o: FullOrder; href: string; extra?: React.ReactNode; statusControl?: React.ReactNode }) {
+export default function OrderRow({ o, href, extra, statusControl, iconView }: { o: FullOrder; href: string; extra?: React.ReactNode; statusControl?: React.ReactNode; iconView?: boolean }) {
   const first = o.items[0];
   const more = o.items.length - 1;
   const owners = [...new Set(o.items.map((i) => i.added_by).filter(Boolean))] as string[]; // only present on staff screens
@@ -28,7 +29,7 @@ export default function OrderRow({ o, href, extra, statusControl }: { o: FullOrd
         {statusControl ?? <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(o.status)}`}>{o.status}</span>}
         <span className="font-bold text-brand-700">{inr(o.total)}</span>
       </div>
-      <Link href={href} className="btn-outline">View</Link>
+      {iconView ? <IconBtn kind="view" label={`View order #${o.id}`} href={href} /> : <Link href={href} className="btn-outline">View</Link>}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import IconBtn from "@/components/IconBtn";
 import { toast } from "@/components/Toaster";
 import Pagination from "@/components/Pagination";
 import Req from "@/components/Req";
@@ -38,6 +39,11 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
     if (!r.ok) return toast.error(r.error || "Could not create the admin");
     toast.success(`${v.role === "admin" ? "Super admin" : "Sub admin"} ${v.name} created`); setAdding(false); router.refresh();
   }
+  async function loginAs(a: A) {
+    const r = await call(`/api/admin/admins/${a.id}/impersonate`, "POST", {});
+    if (!r.ok) return toast.error(r.error || "Could not open this sub admin");
+    router.push("/admin"); router.refresh();
+  }
   async function remove(a: A) {
     if (!confirm(`Delete ${a.role === "admin" ? "super admin" : "sub admin"} ${a.name || login(a)}? They will lose access immediately.`)) return;
     let confirm_password = "";
@@ -53,8 +59,11 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
   // The list only has Edit and Delete. Name, vendor name, login, status and password are all changed on the Edit page.
   const Actions = ({ a, cls }: { a: A; cls: string }) => a.id === meId ? <span className="text-xs text-gray-400">This is you</span> : (
     <>
-      <Link href={`/admin/admins/${a.id}/edit`} className={`btn-outline ${cls}`}>Edit</Link>
-      <button className={`btn-danger ${cls}`} onClick={() => remove(a)}>Delete</button>
+      {a.role === "subadmin" && a.status === "active" && <button type="button" className="btn-primary !min-h-0 !px-2.5 !py-1" onClick={() => loginAs(a)} title="Login as this sub admin" aria-label={`Login as ${a.name || login(a)}`}>
+        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /></svg>
+      </button>}
+      <IconBtn kind="edit" label="Edit admin" href={`/admin/admins/${a.id}/edit`} />
+      <IconBtn kind="delete" label="Delete admin" onClick={() => remove(a)} />
     </>
   );
 

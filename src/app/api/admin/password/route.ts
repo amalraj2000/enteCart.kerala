@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { getAdmin, pwTag, setSession } from "@/lib/session";
+import { getAdmin, impersonationBlock, pwTag, setSession } from "@/lib/session";
 import { bad, readJson } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
 import { STAFF_PASSWORD_MIN, firstError, validatePasswordChange } from "@/lib/validate";
@@ -9,6 +9,8 @@ import { STAFF_PASSWORD_MIN, firstError, validatePasswordChange } from "@/lib/va
 export async function PUT(req: Request) {
   const a = await getAdmin();
   if (!a) return bad("Unauthorized", 401);
+  const blocked = impersonationBlock(a);
+  if (blocked) return bad(blocked, 403);
   if (!(await rateLimit(`admin-pw:${a.id}`, 5, 600))) return bad("Too many attempts. Try again in a few minutes.", 429);
   const b = await readJson(req);
   if (!b) return bad("Invalid request");

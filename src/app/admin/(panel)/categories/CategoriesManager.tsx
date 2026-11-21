@@ -1,4 +1,5 @@
 "use client";
+import IconBtn from "@/components/IconBtn";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -59,8 +60,8 @@ export default function CategoriesManager({ categories, pi }: { categories: Cat[
             {c.editable === false
               ? <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Created by another admin">View only</span>
               : <>
-                  <Link href={`/admin/categories/${c.id}/edit`} className="btn-outline !py-1">Edit</Link>
-                  <button className="btn-danger !py-1" onClick={() => del(c)}>Delete</button>
+                  <IconBtn kind="edit" label={`Edit ${c.name}`} href={`/admin/categories/${c.id}/edit`} />
+                  <IconBtn kind="delete" label={`Delete ${c.name}`} onClick={() => del(c)} />
                 </>}
           </div>
         ))}

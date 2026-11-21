@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Img from "@/components/Img";
+import IconBtn from "@/components/IconBtn";
 import { toast } from "@/components/Toaster";
 import Req from "@/components/Req";
 import FieldError from "@/components/FieldError";
@@ -239,7 +240,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
                 <td className="p-3">
                   {p.editable === false
                     ? <span className="float-right whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Added by another admin">View only</span>
-                    : <div className="flex justify-end gap-2"><button className="btn-outline !py-1" onClick={() => edit(p)}>Edit</button><button className="btn-danger !py-1" onClick={() => del(p)}>Delete</button></div>}
+                    : <div className="flex justify-end gap-2"><IconBtn kind="edit" label={`Edit ${p.title}`} onClick={() => edit(p)} /><IconBtn kind="delete" label={`Delete ${p.title}`} onClick={() => del(p)} /></div>}
                 </td>
               </tr>
             ))}

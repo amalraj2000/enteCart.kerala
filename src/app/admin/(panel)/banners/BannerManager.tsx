@@ -1,4 +1,5 @@
 "use client";
+import IconBtn from "@/components/IconBtn";
 import { largeSrc } from "@/lib/imgSrc";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -159,8 +160,8 @@ export default function BannerManager({ banners, isOwner = true }: { banners: Ba
               : (
                 <div className="flex items-center gap-1">
                   <button className="btn border !py-1" onClick={() => toggle(b)}>{b.active ? "Hide" : "Show"}</button>
-                  <button className="btn-outline !py-1" onClick={() => { setForm({ ...b, active: !!b.active }); setEditing(b); setErrs({}); setOpen(true); }}>Edit</button>
-                  <button className="btn-danger !py-1" onClick={() => del(b)}>Delete</button>
+                  <IconBtn kind="edit" label="Edit banner" onClick={() => { setForm({ ...b, active: !!b.active }); setEditing(b); setErrs({}); setOpen(true); }} />
+                  <IconBtn kind="delete" label="Delete banner" onClick={() => del(b)} />
                 </div>
               )}
           </div>
