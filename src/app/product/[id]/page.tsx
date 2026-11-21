@@ -66,8 +66,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       <Gallery images={productImages(p)} alt={p.title} video={p.video_url ? parseVideo(p.video_url) : null} />
       <div className="min-w-0">
         {p.category_name && <Link href={`/?category=${p.category_id}`} className="mb-2 inline-block rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100">{p.category_name}</Link>}
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold">{p.title}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <h1 className="min-w-0 flex-1 basis-48 break-words text-lg font-bold leading-snug sm:text-xl md:text-2xl">{p.title}</h1>
           <div className="flex shrink-0 items-center gap-2"><ShareButton title={p.title} price={inr(p.price)} publicId={String(p.public_id)} /><WishlistButton productId={p.id} variant="inline" /></div>
         </div>
         <p className="mt-1 text-sm text-gray-500">Sold by <span className="font-semibold text-gray-700">{SHOP_VENDOR}</span></p>
