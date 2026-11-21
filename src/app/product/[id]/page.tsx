@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import ExpandableText from "@/components/ExpandableText";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SHOP_VENDOR } from "@/lib/staffLabel";
@@ -79,7 +80,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </>}
         </div>
         {discountPct(p.price, p.original_price) > 0 && <p className="text-sm font-medium text-green-700">You save {inr(Number(p.original_price) - p.price)}</p>}
-        <p className="mt-4 whitespace-pre-line text-gray-700">{p.description}</p>
+        {p.description && <div className="mt-4"><ExpandableText text={String(p.description)} lines={4} className="text-gray-700" /></div>}
         <BuyPanel product={p} />
       </div>
     </div>
