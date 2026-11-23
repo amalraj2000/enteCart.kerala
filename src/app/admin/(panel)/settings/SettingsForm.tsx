@@ -91,6 +91,22 @@ export default function SettingsForm({ initial }: { initial: Settings }) {
           );
         })}
       </div>
+      <div className="space-y-2 border-t pt-4">
+        <div><h2 className="font-bold">Offers</h2><p className="text-sm text-gray-500">Turn the offer off to stop showing it at checkout. Orders already placed keep their discount.</p></div>
+        {(() => {
+          const on = v.welcome_voucher !== "0";
+          return (
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div><p className="text-sm font-medium">🎁 New user voucher</p><p className="text-xs text-gray-500">₹10 off a customer’s first order, applied by the customer at checkout</p></div>
+              <button type="button" role="switch" aria-checked={on} aria-label="New user voucher" onClick={() => setV({ ...v, welcome_voucher: on ? "0" : "1" })}
+                className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? "bg-brand-600" : "bg-gray-300"}`}>
+                <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
+                <span className="sr-only">{on ? "On" : "Off"}</span>
+              </button>
+            </div>
+          );
+        })()}
+      </div>
       <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : "Save settings"}</button>
     </form>
   );

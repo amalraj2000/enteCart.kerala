@@ -12,7 +12,7 @@ export default function ReviewsSection({ productId, initial }: { productId: numb
   const [list, setList] = useState(initial.reviews);
   const [hasMore, setHasMore] = useState(initial.hasMore);
   const [busy, setBusy] = useState(false), [failed, setFailed] = useState(false);
-  if (!initial.enabled) return null; // reviews switched off by the owner
+  if (!initial.enabled || initial.count === 0) return null; // switched off by the owner, or nothing to show yet: no empty "Customer Reviews" box
 
   async function more() {
     setBusy(true); setFailed(false);
@@ -30,9 +30,6 @@ export default function ReviewsSection({ productId, initial }: { productId: numb
   return (
     <section id="reviews" className="card mt-6 p-4 md:p-8" aria-labelledby="reviews-title">
       <h2 id="reviews-title" className="text-xl font-bold">Customer Reviews</h2>
-      {initial.count === 0 ? (
-        <p className="mt-3 text-gray-500">No reviews yet. Customers who have received this product can review it from their order.</p>
-      ) : (
         <>
           <div className="mt-3 flex items-center gap-3">
             <p className="text-4xl font-extrabold text-gray-900">{initial.avg.toFixed(1)}</p>
@@ -63,7 +60,6 @@ export default function ReviewsSection({ productId, initial }: { productId: numb
             </div>
           )}
         </>
-      )}
     </section>
   );
 }

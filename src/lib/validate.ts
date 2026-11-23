@@ -118,6 +118,7 @@ export const cleanProduct = (b: Record<string, unknown>) => ({
   description: typeof b.description === "string" ? b.description.trim() : "",
   price: num(b.price),
   original_price: b.original_price === "" || b.original_price == null ? 0 : num(b.original_price), // optional; blank = no discount
+  meesho_price: b.meesho_price === "" || b.meesho_price == null ? 0 : num(b.meesho_price), // optional admin-only cost price
   stock: num(b.stock),
   sizes: [...new Set(str(b.sizes).split(",").map((s) => s.trim()).filter(Boolean))].join(","),
   status: cleanStatus(b.status),
@@ -138,6 +139,7 @@ export function validateProduct(p: ReturnType<typeof cleanProduct>): Errors {
     if (!Number.isFinite(p.original_price) || p.original_price > 1_000_000 || Math.round(p.original_price * 100) / 100 !== p.original_price) e.original_price = "Original price must be a valid amount up to ₹10,00,000 (max 2 decimals)";
     else if (Number.isFinite(p.price) && p.original_price < p.price) e.original_price = "Original price can't be lower than the selling price";
   }
+  if (p.meesho_price !== 0 && (!Number.isFinite(p.meesho_price) || p.meesho_price < 0 || p.meesho_price > 1_000_000 || Math.round(p.meesho_price * 100) / 100 !== p.meesho_price)) e.meesho_price = "Meesho price must be a valid amount up to ₹10,00,000 (max 2 decimals)";
   if (!Number.isInteger(p.stock) || p.stock < 0 || p.stock > 100_000) e.stock = "Stock must be a whole number from 0 to 100000";
   if (p.sizes) {
     const parts = p.sizes.split(",");
@@ -249,6 +251,7 @@ export const cleanSettings = (b: Record<string, unknown>) => ({
   show_new_arrivals: b.show_new_arrivals === "0" || b.show_new_arrivals === false ? "0" : "1",
   show_best_sellers: b.show_best_sellers === "0" || b.show_best_sellers === false ? "0" : "1",
   show_highlights: b.show_highlights === "0" || b.show_highlights === false ? "0" : "1",
+  welcome_voucher: b.welcome_voucher === "0" || b.welcome_voucher === false ? "0" : "1",
   theme_color: str(b.theme_color),
 });
 export function validateSettings(v: ReturnType<typeof cleanSettings>): Errors {

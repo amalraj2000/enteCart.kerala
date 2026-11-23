@@ -73,7 +73,7 @@ export const getProduct = unstable_cache(
     const r = await c.execute({ sql: `SELECT p.*, c.name AS category_name
             FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.public_id = ? AND p.status = 'active' AND (c.id IS NULL OR c.status = 'active')`, args: [publicId] });
     if (!r.rows[0]) return null;
-    const { product_link: _admin, ...pub } = plain(r.rows[0]) as Record<string, unknown>; // admin-only reference link never leaves the server
+    const { product_link: _admin, meesho_price: _cost, ...pub } = plain(r.rows[0]) as Record<string, unknown>; // admin-only reference link never leaves the server
     return pub;
   },
   ["product-v3"], { tags: [TAG], revalidate: 60 },

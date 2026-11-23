@@ -45,7 +45,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const s = scopeId ?? 0;
   const today = istDay(), month = istMonth();
 
-  let toProcess: Row, todayOrders: Row, revenue: Row, lowCount: Row, outCount: Row, pendingReviews: Row, recent: Row[], lowRows: Row[];
+  let profit: Row, toProcess: Row, todayOrders: Row, revenue: Row, lowCount: Row, outCount: Row, pendingReviews: Row, recent: Row[], lowRows: Row[];
+  // Profit = (selling price − Meesho cost snapshotted on the order line) × qty, only for lines whose cost was known (cost > 0).
+  const PROFIT = `SELECT COALESCE(SUM(oi.qty * (oi.price - oi.cost)), 0) n ${ITEMS.replace("WHERE p.created_by = ?", "WHERE (? = 0 OR p.created_by = ?)")} AND oi.cost > 0 AND ${PAID} AND strftime('%Y-%m', o.created_at, '+330 minutes') = ?`;
+  profit = await one(PROFIT, [s, s, month]);
   if (!scoped) {
     [toProcess, todayOrders, revenue, lowCount, outCount, pendingReviews, recent, lowRows] = await Promise.all([
       one("SELECT COUNT(*) n FROM orders WHERE status IN ('Placed','Confirmed')"),
@@ -91,10 +94,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </nav>
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Tile label="Orders to process" value={Number(toProcess.n)} sub="Placed + Confirmed" href="/admin/orders" alert={Number(toProcess.n) > 0} />
         <Tile label="Orders today" value={Number(todayOrders.n)} />
         <Tile label="Revenue this month" value={inr(Number(revenue.n))} sub="excl. cancelled & unpaid" />
+        <Tile label="Profit this month" value={inr(Number(profit.n))} sub="selling price − Meesho price" />
         <Tile label="Low stock" value={needStock} sub={needStock ? `${Number(outCount.n)} out of stock` : "All stocked up"} href="/admin/products" alert={Number(outCount.n) > 0} />
       </div>
 

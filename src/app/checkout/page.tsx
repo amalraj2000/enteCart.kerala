@@ -51,8 +51,12 @@ function Checkout() {
   const [loaded, setLoaded] = useState(false);
   const [placed, setPlaced] = useState<"cod" | "online" | null>(null); // the order exists: show a confirmation instead of a flash of the emptied cart
   const [stockOk, setStockOk] = useState<boolean | null>(null); // null = still checking live stock, false = couldn't check
+  const [welcome, setWelcome] = useState<number | null>(null); // ₹ off the first order, when this customer still has the voucher
+  const [useWelcome, setUseWelcome] = useState(false);
   const [onlineOk, setOnlineOk] = useState(false); // owner's switch (Admin → Payments) + Razorpay configured
   useEffect(() => { fetch("/api/payments/status", { cache: "no-store" }).then((r) => r.json()).then((d) => { setOnlineOk(!!d.online); if (!d.online) setMethod("cod"); }).catch(() => {}); }, []);
+
+  useEffect(() => { if (user) fetch("/api/orders/welcome", { cache: "no-store" }).then((r) => r.json()).then((d) => setWelcome(d.eligible ? Number(d.amount) : null)).catch(() => {}); }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Prefill: the saved address (the server falls back to the address of the last order) in ONE request. It starts the moment the page opens,
   // in parallel with the login check, instead of waiting for it — and the old second request (the whole order history) is gone.
@@ -111,9 +115,11 @@ function Checkout() {
   }, [verifying]);
 
   const problems = stockProblems(checkoutItems);
-  const total = checkoutItems.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal = checkoutItems.reduce((s, i) => s + i.price * i.qty, 0);
+  const voucher = useWelcome && welcome ? Math.max(0, Math.min(welcome, subtotal - 1)) : 0; // same rule as the server (lib/welcome.ts)
+  const total = subtotal - voucher;
   const mrp = checkoutItems.reduce((s, i) => s + Math.max(i.price, i.original_price || 0) * i.qty, 0);
-  const saved = mrp - total;
+  const saved = mrp - subtotal;
   const count = checkoutItems.reduce((s, i) => s + i.qty, 0);
 
   if (placed) return (
@@ -156,7 +162,7 @@ function Checkout() {
     setBusy(true);
     const r = await fetch("/api/orders", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...clean, payment_method: method, items: checkoutItems.map((i) => ({ id: i.id, size: i.size, qty: i.qty })) }),
+      body: JSON.stringify({ ...clean, payment_method: method, welcome: voucher > 0, items: checkoutItems.map((i) => ({ id: i.id, size: i.size, qty: i.qty })) }),
     }).catch(() => null);
     if (!r) { placing.current = false; setBusy(false); return toast.error("Network problem — check your connection and try again. (If you were charged, see My Orders.)"); }
     const d = await r.json().catch(() => ({}));
@@ -222,11 +228,23 @@ function Checkout() {
     </section>
   );
 
+  const voucherCard = welcome ? (
+    <section className={`card flex items-center gap-3 border-2 border-dashed p-4 ${useWelcome ? "border-green-500 bg-green-50" : "border-brand-200 bg-brand-50"}`}>
+      <span className="text-2xl" aria-hidden>🎁</span>
+      <div className="min-w-0 flex-1 text-sm">
+        <p className="font-bold">New user voucher — {inr(welcome)} off</p>
+        <p className="text-xs text-gray-600">{useWelcome ? "Applied to your first order." : "Just for your first order on enteCart.kerala."}</p>
+      </div>
+      <button type="button" className={useWelcome ? "text-sm font-bold text-red-600 hover:underline" : "btn-primary !min-h-9 !px-4 !text-sm"} onClick={() => setUseWelcome(!useWelcome)} disabled={busy}>{useWelcome ? "Remove" : "Apply"}</button>
+    </section>
+  ) : null;
+
   const priceDetails = (
     <section className="card h-fit space-y-2 p-5 text-sm">
       <h2 className="text-lg font-bold">Price details <span className="text-sm font-normal text-gray-500">({count} item{count === 1 ? "" : "s"})</span></h2>
       <div className="flex justify-between"><span className="text-gray-600">{saved > 0 ? "Original price" : "Product price"}</span><span>{inr(mrp)}</span></div>
       {saved > 0 && <div className="flex justify-between text-green-700"><span>Total discount</span><span>− {inr(saved)}</span></div>}
+      {voucher > 0 && <div className="flex justify-between text-green-700"><span>New user voucher</span><span>− {inr(voucher)}</span></div>}
       <div className="flex justify-between"><span className="text-gray-600">Delivery</span><span className="font-medium text-brand-700">Free</span></div>
       <hr />
       <div className="flex justify-between text-base font-bold"><span>Order total</span><span>{inr(total)}</span></div>
@@ -301,6 +319,7 @@ function Checkout() {
         </div>
 
         <div className="space-y-4">
+          {voucherCard}
           {priceDetails}
           {problems.length > 0 && (
             <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs font-medium text-red-700">

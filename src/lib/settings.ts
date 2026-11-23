@@ -2,9 +2,9 @@ import { unstable_cache } from "next/cache";
 import { db } from "./db";
 import { DEFAULT_THEME, themeById } from "./themes";
 
-export const SETTING_KEYS = ["shop_phone", "shop_whatsapp", "shop_email", "shop_address", "shop_hours", "shop_about", "social_instagram", "social_facebook", "social_youtube", "show_new_arrivals", "show_best_sellers", "show_highlights", "theme_color"] as const;
+export const SETTING_KEYS = ["shop_phone", "shop_whatsapp", "shop_email", "shop_address", "shop_hours", "shop_about", "social_instagram", "social_facebook", "social_youtube", "show_new_arrivals", "show_best_sellers", "show_highlights", "welcome_voucher", "theme_color"] as const;
 /** On/off switches stored as "1" / "0". A missing value means ON, so the sections stay visible until the owner turns them off. */
-export const TOGGLE_KEYS = ["show_new_arrivals", "show_best_sellers", "show_highlights"] as const;
+export const TOGGLE_KEYS = ["show_new_arrivals", "show_best_sellers", "show_highlights", "welcome_voucher"] as const;
 export type Settings = Record<(typeof SETTING_KEYS)[number], string>;
 
 /** Public shop details shown in the footer and on the contact page (edited in admin → Settings). */

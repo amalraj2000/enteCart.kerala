@@ -329,7 +329,7 @@ export function db(): Promise<Client> {
   return ready.then(getClient);
 }
 
-const SCHEMA_VERSION = "2026-11-quick-1";
+const SCHEMA_VERSION = "2026-11-welcome-1";
 
 async function setupSchema(c: Client) {
       await migrateToRelational(c);
@@ -344,6 +344,9 @@ async function setupSchema(c: Client) {
       await c.execute("ALTER TABLE products ADD COLUMN original_price REAL NOT NULL DEFAULT 0").catch(() => {}); // already exists (original / MRP price; 0 = no discount)
       await c.execute("ALTER TABLE products ADD COLUMN video_url TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists (optional product video link)
       await c.execute("ALTER TABLE products ADD COLUMN product_link TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists (optional admin-only reference link, never shown to shoppers)
+      await c.execute("ALTER TABLE orders ADD COLUMN discount REAL NOT NULL DEFAULT 0").catch(() => {}); // already exists (first-order voucher ₹ taken off; total is already net of it)
+      await c.execute("ALTER TABLE products ADD COLUMN meesho_price REAL NOT NULL DEFAULT 0").catch(() => {}); // already exists (admin-only supplier/Meesho cost price; 0 = not set)
+      await c.execute("ALTER TABLE order_items ADD COLUMN cost REAL NOT NULL DEFAULT 0").catch(() => {}); // already exists (cost price per unit snapshotted when the order was placed; 0 = unknown)
       await c.execute("ALTER TABLE products ADD COLUMN highlighted INTEGER NOT NULL DEFAULT 0").catch(() => {}); // already exists (staff-picked "Highlighted" products for the home page)
       await c.execute("ALTER TABLE users ADD COLUMN password_set INTEGER NOT NULL DEFAULT 1").catch(() => {}); // already exists (0 = signed in without a password: the stored password is a random one nobody knows)
       // Non-guessable product link id (/product/<public_id>). Existing products get one now; new ones get it when they are created.

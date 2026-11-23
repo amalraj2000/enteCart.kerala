@@ -12,7 +12,7 @@ import { toPhoto } from "@/lib/image";
 import { PRODUCT_MAX_IMAGES, PRODUCT_TITLE_MAX, type Errors, cleanProduct, firstError, validateProduct } from "@/lib/validate";
 import { discountPct, inr, productImages, type Category, type Product } from "@/lib/types";
 
-const empty = { title: "", description: "", price: "", original_price: "", stock: "", sizes: "", category_id: "", status: "active", video_url: "", product_link: "", images: [] as string[] };
+const empty = { title: "", description: "", price: "", original_price: "", meesho_price: "", stock: "", sizes: "", category_id: "", status: "active", video_url: "", product_link: "", images: [] as string[] };
 
 export default function ProductManager({ products, categories, pi, staff, meId, by }: { products: (Product & { editable?: boolean })[]; categories: Category[]; pi: PageInfo; staff: { id: number; name: string }[]; meId: number; by: string }) {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
   }
 
   const set = (k: string) => (e: React.ChangeEvent<any>) => setForm({ ...form, [k]: e.target.value });
-  function edit(p: Product) { setForm({ ...p, stock_base: p.stock, original_price: p.original_price ? p.original_price : "", category_id: p.category_id ?? "", status: p.status || "active", video_url: p.video_url || "", product_link: p.product_link || "", images: productImages(p) }); setEditing(p.id); setOpen(true); setErrs({}); }
+  function edit(p: Product) { setForm({ ...p, stock_base: p.stock, original_price: p.original_price ? p.original_price : "", meesho_price: p.meesho_price ? p.meesho_price : "", category_id: p.category_id ?? "", status: p.status || "active", video_url: p.video_url || "", product_link: p.product_link || "", images: productImages(p) }); setEditing(p.id); setOpen(true); setErrs({}); }
   function add() { setForm(empty); setEditing(null); setOpen(true); setErrs({}); }
 
   const delImg = (i: number) => setForm({ ...form, images: form.images.filter((_: string, k: number) => k !== i) });
@@ -108,10 +108,18 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
             ["title", "Title", "sm:col-span-2", { maxLength: PRODUCT_TITLE_MAX }],
             ["price", "Selling price (₹)", "", { type: "number", min: 1, max: 1000000, step: "0.01", inputMode: "decimal" }],
             ["original_price", "Original price / MRP (₹) — optional", "", { type: "number", min: 1, max: 1000000, step: "0.01", inputMode: "decimal" }],
+            ["meesho_price", "Meesho price / your cost (₹) — optional, admin only", "", { type: "number", min: 0, max: 1000000, step: "0.01", inputMode: "decimal" }],
+            ["profit", "Your profit per piece — calculated (selling − Meesho price)", "", {}],
             ["discount", "Discount (%) — calculated automatically", "", {}],
             ["stock", "Stock quantity", "", { type: "number", min: 0, max: 100000, step: 1, inputMode: "numeric" }],
             ["sizes", "Sizes, comma separated (S,M,L,XL)", "sm:col-span-2", { maxLength: 300 }],
-          ] as const).map(([k, ph, span, attrs]) => k === "discount" ? (
+          ] as const).map(([k, ph, span, attrs]) => k === "profit" ? (
+            <div key={k}>
+              <label className="mb-1 block text-xs font-semibold text-gray-500">{ph}</label>
+              <input className="input cursor-not-allowed bg-gray-100 text-gray-600" readOnly disabled tabIndex={-1} aria-readonly
+                value={Number(form.meesho_price) > 0 && Number(form.price) > 0 ? `₹${(Number(form.price) - Number(form.meesho_price)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—"} />
+            </div>
+          ) : k === "discount" ? (
             <div key={k}>
               <label className="mb-1 block text-xs font-semibold text-gray-500">{ph}</label>
               <input className="input cursor-not-allowed bg-gray-100 text-gray-600" readOnly disabled tabIndex={-1} aria-readonly

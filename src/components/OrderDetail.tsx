@@ -77,7 +77,8 @@ export default function OrderDetail({ o, admin, actions, itemExtra }: { o: FullO
         <section className="card p-5">
           <h2 className="mb-3 font-bold">Payment summary</h2>
           <div className="space-y-1 text-sm">
-            <div className="flex justify-between"><span className="text-gray-500">Items ({count})</span><span>{inr(o.total)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Items ({count})</span><span>{inr(Number(o.total) + Number(o.discount || 0))}</span></div>
+            {Number(o.discount) > 0 && <div className="flex justify-between text-green-700"><span>New user voucher</span><span>− {inr(Number(o.discount))}</span></div>}
             <div className="flex justify-between"><span className="text-gray-500">Delivery</span><span className="text-brand-700">Free</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Payment method</span><span>{online ? "Online (Razorpay)" : "Cash on Delivery"}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Payment status</span><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${payLabel(o).tone}`}>{payLabel(o).text}</span></div>

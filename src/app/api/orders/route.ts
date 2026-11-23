@@ -14,6 +14,7 @@ import { razorpayConfigured } from "@/lib/razorpay";
 import { onlinePaymentsEnabled } from "@/lib/settings";
 import { CATEGORY_JOIN, VISIBLE } from "@/lib/visibility";
 import { getSavedAddress, sameAddress } from "@/lib/addresses";
+import { welcomeDiscount, welcomeEligible } from "@/lib/welcome";
 import { cleanAddress, firstError, validateAddress, validateOrderItems } from "@/lib/validate";
 export const dynamic = "force-dynamic";
 const MAX_OPEN_COD = 3;
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
     return bad(online ? `You have ${MAX_OPEN_COD} online orders waiting for payment. Please pay or cancel them first.` : `You already have ${MAX_OPEN_COD} Cash on Delivery orders waiting for confirmation. Please wait for them to be confirmed, or pay online.`, 429);
   const prows = prodRes.rows;
   const byId = new Map(prows.map((p) => [Number(p.id), p]));
-  const items: { id: number; title: string; price: number; size: string; qty: number; image_url: string }[] = [];
+  const items: { id: number; title: string; price: number; size: string; qty: number; image_url: string; cost: number }[] = [];
   const need = new Map<number, number>();
   let total = 0;
   for (const l of lines) {
@@ -93,10 +94,14 @@ export async function POST(req: Request) {
     }
     const sizes = String(p.sizes).split(",").map((s) => s.trim()).filter(Boolean);
     if (sizes.length ? !sizes.includes(l.size) : l.size !== "") return bad(`Please choose a valid size for "${p.title}"`);
-    items.push({ id: l.id, title: String(p.title), price: Number(p.price), size: l.size, qty: l.qty, image_url: String(p.image_url || "") });
+    items.push({ id: l.id, title: String(p.title), price: Number(p.price), size: l.size, qty: l.qty, image_url: String(p.image_url || ""), cost: Number(p.meesho_price) || 0 });
     need.set(l.id, (need.get(l.id) || 0) + l.qty);
     total += Number(p.price) * l.qty;
   }
+
+  // First-order voucher: only when the customer asked for it AND has never ordered before (checked here, never trusted from the browser).
+  const discount = b.welcome === true && (await welcomeEligible(c, user.id)) ? welcomeDiscount(total) : 0;
+  total -= discount;
 
   // Fail fast when stock is already short (the common case in a rush on a popular item): costs one read, zero writes.
   for (const [id, qty] of need) {
@@ -117,14 +122,14 @@ export async function POST(req: Request) {
     stmts.push({ sql: "SELECT CASE WHEN changes() = 1 THEN 1 ELSE json('!') END", args: [] });
   }
   stmts.push({
-    sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total, payment_method, payment_status, public_id)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    args: [user.id, null, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total, online ? "online" : "cod", online ? "Unpaid" : "Pending", publicId],
+    sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total, discount, payment_method, payment_status, public_id)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    args: [user.id, null, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total, discount, online ? "online" : "cod", online ? "Unpaid" : "Pending", publicId],
   });
   // Writers are serialised by SQLite, so inside this one transaction this user's newest order IS the one just inserted.
   const newest = "(SELECT id FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 1)";
   for (const i of items)
-    stmts.push({ sql: `INSERT INTO order_items (order_id, product_id, title, size, qty, price, image_url) VALUES (${newest},?,?,?,?,?,?)`, args: [user.id, i.id, i.title, i.size, i.qty, i.price, i.image_url] });
+    stmts.push({ sql: `INSERT INTO order_items (order_id, product_id, title, size, qty, price, image_url, cost) VALUES (${newest},?,?,?,?,?,?,?)`, args: [user.id, i.id, i.title, i.size, i.qty, i.price, i.image_url, i.cost] });
   stmts.push({ sql: `SELECT id FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 1`, args: [user.id] });
 
   try {
