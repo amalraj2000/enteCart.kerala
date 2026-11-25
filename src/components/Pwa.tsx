@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { toast } from "./Toaster";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -21,23 +22,76 @@ export function PwaRegister() {
   return null;
 }
 
-/** "📲 Install app" link: appears only where installing is possible (Android/desktop Chrome & Edge) or, on iPhone/iPad, shows how. */
+const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); // iPadOS reports as a Mac
+const isSafari = () => !/crios|fxios|edgios|opios|gsa|instagram|fban|fbav|line|whatsapp/i.test(navigator.userAgent);
+
+function IosGuide({ onClose }: { onClose: () => void }) {
+  const [safari, setSafari] = useState(true);
+  useEffect(() => { setSafari(isSafari()); }, []);
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-3 sm:items-center" onClick={() => onClose()}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-2xl bg-white p-5 text-left text-sm text-gray-800 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-1 text-base font-semibold">Install enteCart on your iPhone</h3>
+            {!safari && <p className="mb-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">This browser may not offer “Add to Home Screen”. Open this page in <b>Safari</b> for best results.</p>}
+            <ol className="list-decimal space-y-2 pl-5 py-2">
+              <li>Tap the <b>Share</b> button <span aria-hidden>(⬆︎ square with arrow)</span> in the browser toolbar. If you don’t see it, tap <b>⋯</b> first.</li>
+              <li>Scroll down and tap <b>Add to Home Screen</b>.</li>
+              <li>Tap <b>Add</b> — enteCart now appears on your home screen.</li>
+            </ol>
+            <button type="button" className="mt-2 w-full rounded-lg bg-brand-600 py-2 font-medium text-white" onClick={() => onClose()}>Got it</button>
+          </div>
+        </div>
+  );
+}
+
+/** "📲 Install app" link: appears only where installing is possible (Android/desktop Chrome & Edge) or, on iPhone/iPad (no install API exists there), opens a step-by-step guide. */
 export function InstallApp({ className = "" }: { className?: string }) {
   const [can, setCan] = useState(false);
   const [ios, setIos] = useState(false);
+  const [guide, setGuide] = useState(false);
   useEffect(() => {
     const check = () => setCan(!!(window as any).__ekInstall && !standalone());
-    setIos(/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone());
+    setIos(isIos() && !standalone());
     check();
     window.addEventListener(EVT, check);
     return () => window.removeEventListener(EVT, check);
   }, []);
   if (!can && !ios) return null;
   return (
-    <button type="button" className={className} onClick={async () => {
-      const p = (window as any).__ekInstall as Prompt | undefined;
-      if (p) { await p.prompt(); await p.userChoice.catch(() => {}); (window as any).__ekInstall = null; setCan(false); }
-      else toast.success("Tap the Share icon, then “Add to Home Screen”");
-    }}>📲 Install app</button>
+    <>
+      <button type="button" className={className} onClick={async () => {
+        const p = (window as any).__ekInstall as Prompt | undefined;
+        if (p) { await p.prompt(); await p.userChoice.catch(() => {}); (window as any).__ekInstall = null; setCan(false); }
+        else setGuide(true);
+      }}>📲 Install app</button>
+      {guide && <IosGuide onClose={() => setGuide(false)} />}
+    </>
+  );
+}
+
+const DISMISS = "ek_ios_banner_off";
+
+/** Slim banner at the top for iPhone/iPad visitors (iOS can't prompt, so we point to Share → Add to Home Screen). Hidden once installed, dismissed, or in the admin panel. */
+export function IosInstallBanner() {
+  const [show, setShow] = useState(false);
+  const [guide, setGuide] = useState(false);
+  const admin = usePathname().startsWith("/admin");
+  useEffect(() => {
+    let off = false;
+    try { off = localStorage.getItem(DISMISS) === "1"; } catch {}
+    setShow(isIos() && !standalone() && !off);
+  }, []);
+  if (!show || admin) return null;
+  const close = () => { setShow(false); try { localStorage.setItem(DISMISS, "1"); } catch {} };
+  return (
+    <>
+      <div className="flex items-center gap-2 bg-brand-600 px-3 py-2 text-sm text-white">
+        <span aria-hidden>📲</span>
+        <span className="flex-1">Install the enteCart app on your iPhone</span>
+        <button type="button" className="rounded-md bg-white px-3 py-1 text-xs font-semibold text-brand-700" onClick={() => setGuide(true)}>How</button>
+        <button type="button" aria-label="Dismiss" className="px-1 text-lg leading-none" onClick={close}>×</button>
+      </div>
+      {guide && <IosGuide onClose={() => setGuide(false)} />}
+    </>
   );
 }
