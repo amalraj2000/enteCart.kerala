@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Toaster from "@/components/Toaster";
 import AuthModal from "@/components/AuthModal";
-import { PwaRegister, IosInstallBanner } from "@/components/Pwa";
+import { PwaRegister } from "@/components/Pwa";
 import ShopLoader from "@/components/ShopLoader";
 import MobileNav from "@/components/MobileNav";
 import { SITE_NAME, siteUrl } from "@/lib/site";
@@ -34,7 +34,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head><style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} /></head>
       <body className="flex min-h-screen flex-col">
         <Providers>
-          <IosInstallBanner />
           <Header />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
           <Footer />

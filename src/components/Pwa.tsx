@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import { toast } from "./Toaster";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -64,33 +63,6 @@ export function InstallApp({ className = "" }: { className?: string }) {
         if (p) { await p.prompt(); await p.userChoice.catch(() => {}); (window as any).__ekInstall = null; setCan(false); }
         else setGuide(true);
       }}>📲 Install app</button>
-      {guide && <IosGuide onClose={() => setGuide(false)} />}
-    </>
-  );
-}
-
-const DISMISS = "ek_ios_banner_off";
-
-/** Slim banner at the top for iPhone/iPad visitors (iOS can't prompt, so we point to Share → Add to Home Screen). Hidden once installed, dismissed, or in the admin panel. */
-export function IosInstallBanner() {
-  const [show, setShow] = useState(false);
-  const [guide, setGuide] = useState(false);
-  const admin = usePathname().startsWith("/admin");
-  useEffect(() => {
-    let off = false;
-    try { off = localStorage.getItem(DISMISS) === "1"; } catch {}
-    setShow(isIos() && !standalone() && !off);
-  }, []);
-  if (!show || admin) return null;
-  const close = () => { setShow(false); try { localStorage.setItem(DISMISS, "1"); } catch {} };
-  return (
-    <>
-      <div className="flex items-center gap-2 bg-brand-600 px-3 py-2 text-sm text-white">
-        <span aria-hidden>📲</span>
-        <span className="flex-1">Install the enteCart app on your iPhone</span>
-        <button type="button" className="rounded-md bg-white px-3 py-1 text-xs font-semibold text-brand-700" onClick={() => setGuide(true)}>How</button>
-        <button type="button" aria-label="Dismiss" className="px-1 text-lg leading-none" onClick={close}>×</button>
-      </div>
       {guide && <IosGuide onClose={() => setGuide(false)} />}
     </>
   );
