@@ -1,6 +1,7 @@
 import type { Client } from "@libsql/client";
 import { inr } from "./types";
 import { customerNameSql } from "./userName";
+import { sendPush } from "./push";
 
 export type NotifyInput = { type: "order" | "review"; title: string; body: string; link: string };
 const KEEP = 50; // newest notifications kept per customer
@@ -13,6 +14,7 @@ export async function notifyUser(c: Client, userId: number | null | undefined, n
   if (!userId || !n.link.startsWith("/") || n.link.startsWith("//")) return;
   try {
     await c.execute({ sql: "INSERT INTO notifications (user_id, type, title, body, link) VALUES (?,?,?,?,?)", args: [userId, n.type, n.title.slice(0, 120), n.body.slice(0, 300), n.link] });
+    await sendPush(c, userId, { title: n.title, body: n.body, url: n.link, tag: `${n.type}-${n.link}` }); // phone notification (never throws)
     if (Math.random() < 0.1) // now and then, drop everything older than the newest KEEP
       await c.execute({ sql: "DELETE FROM notifications WHERE user_id = ? AND id NOT IN (SELECT id FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT ?)", args: [userId, userId, KEEP] });
   } catch (e) { console.error("Notification failed:", (e as Error).message); }

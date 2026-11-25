@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "./Toaster";
+import { pushUnsubscribe } from "@/lib/pushClient";
 
 export default function AdminMenu() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function AdminMenu() {
       {menu && (
         <div className="card absolute right-0 mt-2 w-48 p-1 text-sm" onClick={() => setMenu(false)}>
           <Link href="/admin/account" className="block rounded px-3 py-2 hover:bg-brand-50">⚙️ Account settings</Link>
-          <button className="block w-full rounded px-3 py-2 text-left text-red-600 hover:bg-red-50" onClick={async () => { await fetch("/api/admin/logout", { method: "POST" }); toast.success("Logged out"); router.replace("/"); router.refresh(); }}>🚪 Logout</button>
+          <button className="block w-full rounded px-3 py-2 text-left text-red-600 hover:bg-red-50" onClick={async () => { await pushUnsubscribe(); await fetch("/api/admin/logout", { method: "POST" }); toast.success("Logged out"); router.replace("/"); router.refresh(); }}>🚪 Logout</button>
         </div>
       )}
     </div>

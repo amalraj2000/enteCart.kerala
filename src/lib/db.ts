@@ -191,6 +191,16 @@ const BASE_SCHEMA = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, id)`,
+  // Web-push subscriptions (installed PWA on Android / iPhone). One row per browser endpoint; it belongs to whoever is logged in on that device.
+  `CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id)`,
   `CREATE TABLE IF NOT EXISTS wishlist (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -329,7 +339,7 @@ export function db(): Promise<Client> {
   return ready.then(getClient);
 }
 
-const SCHEMA_VERSION = "2026-11-welcome-1";
+const SCHEMA_VERSION = "2026-11-push-1";
 
 async function setupSchema(c: Client) {
       await migrateToRelational(c);

@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { CartItem } from "@/lib/types";
 import { toast } from "./Toaster";
+import { pushUnsubscribe } from "@/lib/pushClient";
 
 type User = { id: number; identifier: string; name?: string; email?: string | null; phone?: string | null; avatar?: string; noPassword?: boolean } | null;
 type Ctx = {
@@ -136,7 +137,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     closeAuth: () => { setAuthOpen(false); setPending(null); },
     afterAuth: () => { setAuthOpen(false); const p = pending; setPending(null); p?.(); },
     refreshUser: async () => { const d = await (await fetch("/api/auth/me")).json(); setUser(d.user); },
-    logout: async () => { await fetch("/api/auth/logout", { method: "POST" }); setUser(null); },
+    logout: async () => { await pushUnsubscribe(); await fetch("/api/auth/logout", { method: "POST" }); setUser(null); },
     wishlist, toggleWish,
     cart, cartCount: cart.reduce((s, i) => s + i.qty, 0), cartTotal: cart.reduce((s, i) => s + i.qty * i.price, 0),
     addToCart, syncStock, setQty, removeItem, clearCart: () => setCart([]),
