@@ -1,5 +1,6 @@
 "use client";
 import IconBtn from "@/components/IconBtn";
+import StatusSelect from "../orders/StatusSelect";
 import Img from "@/components/Img";
 import Pagination from "@/components/Pagination";
 import FieldError from "@/components/FieldError";
@@ -7,6 +8,7 @@ import Req from "@/components/Req";
 import { toast } from "@/components/Toaster";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { formatIst, istDay } from "@/lib/istDate";
 import { inr } from "@/lib/types";
 import type { PageInfo } from "@/lib/paginate";
@@ -19,9 +21,9 @@ export type InboxOrder = {
   subtotal: number; delivery_charge: number; discount: number; total: number; created_at: string; updated_at: string;
   items: InboxItem[]; history: { event: string; actor: string; created_at: string }[];
 };
-export type PickProduct = { id: number; title: string; price: number; image_url: string };
+export type PickProduct = { id: number; title: string; price: number; image_url: string; stock: number };
 type Filters = { q: string; status: string; source: string; pay: string; from: string; to: string; sort: string };
-type Summary = { total: number; pending: number; processing: number; delivered: number; sales: number; received: number };
+type Summary = { total: number; delivered: number };
 type Modal = { kind: "form"; id?: number } | { kind: "view"; id: number } | { kind: "delete"; id: number } | null;
 
 const BADGE: Record<string, string> = {
@@ -66,25 +68,25 @@ export default function InboxManager({ orders, pi, summary, products, filters }:
   }
 
   const cards: [string, string | number, string][] = [
-    ["Total inbox orders", summary.total, "All saved orders"], ["Pending", summary.pending, "Waiting to be confirmed"], ["Processing", summary.processing, "Confirmed or processing"],
-    ["Delivered", summary.delivered, "Completed orders"], ["Sales value", inr(summary.sales), "Order value, cancelled excluded"], ["Money received", inr(summary.received), "Only orders marked Paid"],
+    ["Total inbox orders", summary.total, "All saved orders"], ["Delivered", summary.delivered, "Completed orders"],
   ];
+
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="text-xl font-bold">Inbox Orders</h1><p className="text-sm text-gray-500">Orders received on Instagram, Facebook, WhatsApp or other messages.</p></div>
-        <button className="btn-primary" onClick={() => setModal({ kind: "form" })}>+ Add Inbox Order</button>
+        <div className="flex flex-wrap gap-2"><a className="btn-outline" download href={`/api/admin/inbox-orders/export?${new URLSearchParams(Object.fromEntries(Object.entries(filters).filter(([, v]) => v)))}`}>⬇ Export CSV</a><button className="btn-primary" onClick={() => setModal({ kind: "form" })}>+ Add Inbox Order</button></div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:max-w-md">
         {cards.map(([l, v, sub]) => (
           <div key={l} className="card p-4"><p className="text-xs text-gray-500">{l}</p><p className="mt-1 text-2xl font-extrabold tracking-tight">{v}</p><p className="mt-0.5 text-[11px] leading-tight text-gray-400">{sub}</p></div>
         ))}
       </div>
 
-      <form className="card grid grid-cols-2 gap-2 p-3 md:grid-cols-4 xl:grid-cols-8" onSubmit={(e) => { e.preventDefault(); apply(); }}>
-        <input className="input col-span-2 md:col-span-2" placeholder="Search name, phone or order ID" aria-label="Search" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
+      <form className="card grid grid-cols-2 gap-2 p-3 md:grid-cols-3 xl:grid-cols-4" onSubmit={(e) => { e.preventDefault(); apply(); }}>
+        <input className="input col-span-2 md:col-span-3 xl:col-span-2" placeholder="Search name, phone or order ID" aria-label="Search" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
         <select className="input" aria-label="Status" value={f.status} onChange={(e) => { setF({ ...f, status: e.target.value }); apply({ status: e.target.value }); }}><option value="">All statuses</option>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
         <select className="input" aria-label="Source" value={f.source} onChange={(e) => { setF({ ...f, source: e.target.value }); apply({ source: e.target.value }); }}><option value="">All sources</option>{SOURCES.map((s) => <option key={s}>{s}</option>)}</select>
         <select className="input" aria-label="Payment status" value={f.pay} onChange={(e) => { setF({ ...f, pay: e.target.value }); apply({ pay: e.target.value }); }}><option value="">All payments</option>{PAY_STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
@@ -93,7 +95,7 @@ export default function InboxManager({ orders, pi, summary, products, filters }:
         <select className="input" aria-label="Sort" value={f.sort} onChange={(e) => { setF({ ...f, sort: e.target.value }); apply({ sort: e.target.value }); }}>
           <option value="newest">Newest added</option><option value="oldest">Oldest added</option><option value="date">Order date</option><option value="high">Amount: high → low</option><option value="low">Amount: low → high</option>
         </select>
-        <div className="col-span-2 flex gap-2 md:col-span-4 xl:col-span-8">
+        <div className="col-span-full flex gap-2">
           <button className="btn-primary">Search</button>
           {hasFilter && <button type="button" className="btn-outline" onClick={() => { setF({ q: "", status: "", source: "", pay: "", from: "", to: "", sort: f.sort }); router.push(qs({ q: "", status: "", source: "", pay: "", from: "", to: "", page: 1 })); }}>Clear filters</button>}
         </div>
@@ -105,28 +107,32 @@ export default function InboxManager({ orders, pi, summary, products, filters }:
         </div>
       ) : (
         <div className="card overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-left text-sm">
+          <table className="rtable w-full min-w-[960px] text-left text-sm">
             <thead className="border-b bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-              <tr><th className="p-3">Order ID</th><th className="p-3">Customer</th><th className="p-3">City</th><th className="p-3">Product</th><th className="p-3">Qty</th><th className="p-3">Total</th><th className="p-3">Source</th><th className="p-3">Date</th><th className="p-3">Status</th><th className="p-3 text-right">Actions</th></tr>
+              <tr><th className="p-3">Order</th><th className="p-3">Customer</th><th className="p-3">Source</th><th className="p-3">Products</th><th className="p-3">Payment</th><th className="p-3">Total</th><th className="p-3">Status</th><th className="p-3 text-right">Action</th></tr>
             </thead>
             <tbody className="divide-y">
               {orders.map((o) => {
-                const qty = o.items.reduce((s, i) => s + i.qty, 0);
+                const first = o.items[0], more = o.items.length - 1;
+                const tone = o.payment_status === "Paid" ? "bg-green-100 text-green-800" : o.payment_status === "Refunded" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-700";
                 return (
-                  <tr key={o.id} className="align-middle">
-                    <td className="p-3 font-mono text-xs font-semibold">{o.order_no}</td>
-                    <td className="p-3"><p className="font-medium">{o.customer_name}</p><a href={`tel:${o.phone}`} className="text-xs text-gray-500 hover:underline">{o.phone}</a></td>
-                    <td className="p-3">{o.city || "—"}</td>
-                    <td className="max-w-[14rem] p-3"><p className="truncate">{o.items[0]?.title}</p>{o.items.length > 1 && <p className="text-xs text-gray-400">+{o.items.length - 1} more</p>}</td>
-                    <td className="p-3">{qty}</td>
-                    <td className="p-3 font-semibold">{inr(o.total)}<p className="mt-0.5"><Badge v={o.payment_status} /></p></td>
-                    <td className="p-3 whitespace-nowrap"><span aria-hidden>{SRC_ICON[o.source]}</span> {o.source}</td>
-                    <td className="p-3 whitespace-nowrap">{dmy(o.order_date)}</td>
-                    <td className="p-3">
-                      <select aria-label={`Update status of ${o.order_no}`} disabled={busy === o.id} value={o.status} onChange={(e) => patch(o, { status: e.target.value }, `${o.order_no} is now ${e.target.value}`)}
-                        className={`rounded-full border-0 py-1 pl-2.5 pr-7 text-xs font-semibold ${BADGE[o.status]}`}>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
+                  <tr key={`${o.id}-${o.status}`} className="align-middle">
+                    <td data-label="Order" className="p-3"><p className="font-mono text-xs font-semibold">{o.order_no}</p><p className="text-xs text-gray-500">{formatIst(o.created_at)}</p></td>
+                    <td data-label="Customer" className="p-3"><p className="font-medium">{o.customer_name}</p><p className="text-xs text-gray-500">{o.phone}</p></td>
+                    <td data-label="Source" className="p-3"><span className="whitespace-nowrap rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-800">{SRC_ICON[o.source]} {o.source}</span></td>
+                    <td data-label="Products" className="p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          <Img src={first?.image_url || ""} alt={first?.title || "Order"} sizes="48px" className="h-12 w-12 rounded-lg object-cover" />
+                          {more > 0 && <span className="absolute -bottom-1 -right-1 rounded-full bg-brand-700 px-1.5 text-[10px] font-semibold text-white">+{more}</span>}
+                        </div>
+                        <p className="max-w-[14rem] truncate font-medium">{first?.title || "Order"}{more > 0 && <span className="font-normal text-gray-500"> and {more} more</span>}</p>
+                      </div>
                     </td>
-                    <td className="p-3"><div className="flex justify-end gap-1.5">
+                    <td data-label="Payment" className="p-3"><span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`}>{o.payment_method} · {o.payment_status}</span></td>
+                    <td data-label="Total" className="p-3 font-bold text-brand-700">{inr(o.total)}</td>
+                    <td data-label="Status" className="p-3"><StatusSelect inbox label={o.order_no} id={o.id} status={o.status} /></td>
+                    <td data-label="Action" className="p-3"><div className="flex justify-end gap-1.5">
                       <IconBtn kind="view" label={`View ${o.order_no}`} onClick={() => setModal({ kind: "view", id: o.id })} />
                       <IconBtn kind="edit" label={`Edit ${o.order_no}`} onClick={() => setModal({ kind: "form", id: o.id })} />
                       <IconBtn kind="delete" label={`Delete ${o.order_no}`} disabled={busy === o.id} onClick={() => setModal({ kind: "delete", id: o.id })} />
@@ -161,22 +167,29 @@ export default function InboxManager({ orders, pi, summary, products, filters }:
 }
 
 function Dialog({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", key);
     const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
     return () => { window.removeEventListener("keydown", key); document.body.style.overflow = prev; };
   }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={title} className={`max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:rounded-2xl ${wide ? "max-w-3xl" : "max-w-md"}`} onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-3">
+  if (!mounted) return null;
+  // Rendered on <body>: inside the page, the fade-in wrapper (app/template.tsx) traps a fixed overlay below the site header.
+  return createPortal(
+    <div className={`fixed inset-0 z-[100] flex bg-black/50 ${wide ? "" : "items-end justify-center sm:items-center sm:p-4"}`} onClick={wide ? undefined : onClose}>
+      <div role="dialog" aria-modal="true" aria-label={title} className={`flex w-full flex-col overflow-hidden bg-white shadow-xl ${wide ? "h-[100dvh]" : "max-h-[100dvh] max-w-md rounded-t-2xl sm:max-h-[90vh] sm:rounded-2xl"}`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex shrink-0 items-center justify-between border-b bg-white px-4 py-3 sm:px-8">
           <h2 className="text-lg font-bold">{title}</h2>
           <button type="button" aria-label="Close" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100">✕</button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className={`p-4 sm:p-8 ${wide ? "mx-auto max-w-4xl" : ""}`}>{children}</div>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -201,7 +214,7 @@ function Detail({ o, busy, onPatch, onEdit, onDelete }: { o: InboxOrder; busy: b
             </li>
           ))}
         </ul>
-        <dl className="mt-2 ml-auto max-w-xs space-y-0.5"><Row k="Subtotal" v={inr(o.subtotal)} /><Row k="Delivery" v={inr(o.delivery_charge)} />{o.discount > 0 && <Row k="Discount" v={"−" + inr(o.discount)} />}<Row k="Total" v={inr(o.total)} bold /></dl>
+        <dl className="mt-2 ml-auto max-w-xs space-y-0.5">{(o.delivery_charge > 0 || o.discount > 0) && <Row k="Subtotal" v={inr(o.subtotal)} />}{o.delivery_charge > 0 && <Row k="Delivery" v={inr(o.delivery_charge)} />}{o.discount > 0 && <Row k="Discount" v={"−" + inr(o.discount)} />}<Row k="Total" v={inr(o.total)} bold /></dl>
       </section>
       <section className="grid gap-3 rounded-lg bg-gray-50 p-3 sm:grid-cols-2">
         <label className="block text-xs font-semibold text-gray-500">Order status
@@ -224,9 +237,9 @@ function Detail({ o, busy, onPatch, onEdit, onDelete }: { o: InboxOrder; busy: b
 }
 const Row = ({ k, v, bold }: { k: string; v: string; bold?: boolean }) => <div className={`flex justify-between gap-6 ${bold ? "border-t pt-1 font-bold" : "text-gray-600"}`}><dt>{k}</dt><dd>{v}</dd></div>;
 
-type Line = { key: number; product_id: number | null; title: string; qty: string; price: string; image_url: string };
+type Line = { key: number; product_id: number | null; title: string; qty: string; price: string; image_url: string; legacy: boolean; clamped?: boolean };
 let lineKey = 1;
-const blank = (): Line => ({ key: lineKey++, product_id: null, title: "", qty: "1", price: "", image_url: "" });
+const blank = (): Line => ({ key: lineKey++, product_id: null, title: "", qty: "1", price: "", image_url: "", legacy: false });
 const numOr0 = (s: string) => (s.trim() === "" ? 0 : Number(s));
 
 function OrderForm({ order, products, onCancel, onSaved }: { order?: InboxOrder; products: PickProduct[]; onCancel: () => void; onSaved: (msg: string) => void }) {
@@ -236,7 +249,7 @@ function OrderForm({ order, products, onCancel, onSaved }: { order?: InboxOrder;
     payment_status: order?.payment_status ?? "Pending", status: order?.status ?? "Pending", tracking_number: order?.tracking_number ?? "", notes: order?.notes ?? "",
     delivery_charge: String(order?.delivery_charge ?? 0), discount: String(order?.discount ?? 0),
   });
-  const [lines, setLines] = useState<Line[]>(order ? order.items.map((i) => ({ key: lineKey++, product_id: i.product_id, title: i.title, qty: String(i.qty), price: String(i.price), image_url: i.image_url })) : [blank()]);
+  const [lines, setLines] = useState<Line[]>(order ? order.items.map((i) => ({ key: lineKey++, product_id: i.product_id, title: i.title, qty: String(i.qty), price: String(i.price), image_url: i.image_url, legacy: i.product_id === null })) : [blank()]);
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof v, val: string) => setV((p) => ({ ...p, [k]: val }));
@@ -245,23 +258,28 @@ function OrderForm({ order, products, onCancel, onSaved }: { order?: InboxOrder;
   const subtotal = lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.price) || 0), 0);
   const total = Math.max(0, subtotal + numOr0(v.delivery_charge) - numOr0(v.discount));
 
-  function choose(key: number, id: string) {
-    const p = products.find((x) => x.id === Number(id));
-    if (!p) return setLine(key, { product_id: null });
-    setLine(key, { product_id: p.id, title: p.title, price: String(p.price), image_url: p.image_url });
+  function choose(key: number, p: PickProduct) {
+    setLines((ls) => ls.map((l) => (l.key === key ? { ...l, product_id: p.id, title: p.title, price: String(p.price), image_url: p.image_url, legacy: false, clamped: false, qty: String(Math.min(Number(l.qty) || 1, Math.max(1, p.stock))) } : l)));
   }
+  /** Digits only, no leading zeros; a new order can't ask for more than the store has (the number snaps back to the stock and says so). */
+  function changeQty(key: number, raw: string, p?: PickProduct) {
+    let n = raw.replace(/\D/g, "").replace(/^0+/, "").slice(0, 4);
+    let clamped = false;
+    if (p && !order && n && Number(n) > p.stock) { n = String(Math.max(p.stock, 0)); clamped = true; }
+    setLine(key, { qty: n, clamped });
+  }
+  const qtyErr = (l: Line, p?: PickProduct): string | null =>
+    l.clamped && p ? `Only ${p.stock} in stock — set to ${p.stock}` : l.qty === "" || Number(l.qty) < 1 ? "Enter a quantity of 1 or more" : null;
+
   function clientCheck() {
     const e: Record<string, string> = {};
     if (v.customer_name.trim().length < 2) e.customer_name = "Full name is required";
     if (!v.phone.trim()) e.phone = "Phone number is required"; else if (!/^[6-9]\d{9}$/.test(v.phone.replace(/[\s-]/g, "").replace(/^(\+91|91|0)(?=\d{10}$)/, ""))) e.phone = "Enter a valid 10-digit Indian mobile number";
     if (v.pincode.trim() && !/^[1-9]\d{5}$/.test(v.pincode.trim())) e.pincode = "PIN code must be 6 digits";
     if (!v.order_date) e.order_date = "Order date is required";
-    if (lines.some((l) => !l.title.trim())) e.items = "Every product needs a name";
+    if (lines.some((l) => !l.product_id && !l.legacy)) e.items = "Select a product for every line";
     else if (lines.some((l) => !Number.isInteger(Number(l.qty)) || Number(l.qty) < 1)) e.items = "Quantity must be a whole number, at least 1";
-    else if (lines.some((l) => l.price.trim() !== "" && !(Number(l.price) >= 0))) e.items = "Product price must be 0 or more";
-    if (!(numOr0(v.delivery_charge) >= 0)) e.delivery_charge = "Delivery charge must be 0 or more";
-    if (!(numOr0(v.discount) >= 0)) e.discount = "Discount must be 0 or more";
-    else if (numOr0(v.discount) > subtotal + numOr0(v.delivery_charge)) e.discount = "Discount cannot be more than the order value";
+    else if (!order) { const over = lines.find((l) => { const p = products.find((x) => x.id === l.product_id); return p && Number(l.qty) > p.stock; }); if (over) { const p = products.find((x) => x.id === over.product_id)!; e.items = p.stock <= 0 ? `“${p.title}” is out of stock` : `Only ${p.stock} of “${p.title}” in stock`; } }
     return e;
   }
   async function save(e: React.FormEvent) {
@@ -302,33 +320,38 @@ function OrderForm({ order, products, onCancel, onSaved }: { order?: InboxOrder;
 
       <H>Products</H>
       <div className="space-y-3">
-        {lines.map((l, n) => (
-          <div key={l.key} className="space-y-2 rounded-lg border bg-gray-50 p-3">
-            <div className="flex items-start gap-3">
-              {l.image_url ? <Img src={l.image_url} alt="" sizes="56px" className="h-14 w-14 shrink-0 rounded-lg object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-gray-200 text-xl">🛍️</span>}
-              <div className="grid min-w-0 flex-1 gap-2">
-                <select className="input" aria-label="Pick a product from the store" value={l.product_id ?? ""} onChange={(e) => choose(l.key, e.target.value)}>
-                  <option value="">Select from store products (optional)…</option>{products.map((p) => <option key={p.id} value={p.id}>{p.title} — {inr(p.price)}</option>)}
-                </select>
-                <input className="input" aria-label="Product name" placeholder="Product name *" maxLength={150} value={l.title} onChange={(e) => setLine(l.key, { title: e.target.value, product_id: l.product_id && products.find((p) => p.id === l.product_id)?.title === e.target.value ? l.product_id : null })} />
+        {lines.map((l, n) => {
+          const p = products.find((x) => x.id === l.product_id);
+          const qty = Number(l.qty) || 0, price = Number(l.price) || 0;
+          return (
+            <div key={l.key} className="space-y-3 rounded-lg border bg-gray-50 p-3">
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  {l.legacy
+                    ? <div className="flex items-center gap-3 rounded-lg border bg-white p-2">{l.image_url ? <Img src={l.image_url} alt="" sizes="56px" className="h-14 w-14 shrink-0 rounded-lg object-cover" /> : <span className="h-14 w-14 shrink-0 rounded-lg bg-gray-100" />}<span className="min-w-0"><span className="block truncate font-medium">{l.title}</span><span className="text-xs text-gray-500">Added by hand earlier — remove it to pick a store product</span></span></div>
+                    : <ProductPicker products={products} value={p ?? null} onPick={(x) => choose(l.key, x)} />}
+                </div>
+                {lines.length > 1 && <button type="button" aria-label={`Remove product ${n + 1}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-300 bg-white text-red-600 hover:bg-red-50" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>✕</button>}
               </div>
-              {lines.length > 1 && <button type="button" aria-label={`Remove product ${n + 1}`} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-300 text-red-600 hover:bg-red-50" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>✕</button>}
+              {(p || l.legacy) && (
+                <div className="grid grid-cols-3 items-end gap-2">
+                  <label className="text-xs font-semibold text-gray-500">Quantity<Req />
+                    <input className={`input mt-1 ${qtyErr(l, p) ? "!border-red-500" : ""}`} inputMode="numeric" aria-invalid={!!qtyErr(l, p)} value={l.qty}
+                      onChange={(e) => changeQty(l.key, e.target.value, p)} onBlur={() => !l.qty && setLine(l.key, { qty: "1", clamped: false })} />
+                    {qtyErr(l, p)
+                      ? <span role="alert" className="mt-0.5 block text-[11px] font-medium text-red-600">{qtyErr(l, p)}</span>
+                      : p && !order && <span className="mt-0.5 block text-[11px] font-normal text-gray-400">In stock: {p.stock}</span>}</label>
+                  <div className="text-xs font-semibold text-gray-500">Price<p className="mt-1 py-2 text-sm font-medium text-gray-900">{inr(price)}</p></div>
+                  <div className="text-xs font-semibold text-gray-500">Line total<p className="mt-1 py-2 text-sm font-bold text-gray-900">{inr(qty * price)}</p></div>
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <label className="text-xs font-semibold text-gray-500">Qty<Req /><input className="input mt-1" inputMode="numeric" value={l.qty} onChange={(e) => setLine(l.key, { qty: e.target.value })} /></label>
-              <label className="text-xs font-semibold text-gray-500">Price (₹)<input className="input mt-1" inputMode="decimal" value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} /></label>
-              <div className="text-xs font-semibold text-gray-500">Line total<p className="mt-1 py-2 text-sm font-bold text-gray-900">{inr((Number(l.qty) || 0) * (Number(l.price) || 0))}</p></div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         <FieldError msg={errs.items} />
         {lines.length < 20 && <button type="button" className="btn-outline" onClick={() => setLines((ls) => [...ls, blank()])}>+ Add another product</button>}
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block text-sm font-medium">Delivery charge (₹)<input className={`input mt-1 ${errs.delivery_charge ? "!border-red-500" : ""}`} inputMode="decimal" value={v.delivery_charge} onChange={(e) => set("delivery_charge", e.target.value)} /><FieldError msg={errs.delivery_charge} /></label>
-        <label className="block text-sm font-medium">Discount (₹)<input className={`input mt-1 ${errs.discount ? "!border-red-500" : ""}`} inputMode="decimal" value={v.discount} onChange={(e) => set("discount", e.target.value)} /><FieldError msg={errs.discount} /></label>
-        <div className="rounded-lg bg-brand-50 p-3 text-sm"><p className="text-gray-500">Total amount</p><p className="text-2xl font-extrabold text-brand-700">{inr(total)}</p></div>
-      </div>
+      <div className="rounded-lg bg-brand-50 p-3 text-sm sm:max-w-xs"><p className="text-gray-500">Total amount</p><p className="text-2xl font-extrabold text-brand-700">{inr(total)}</p></div>
 
       <H>Order information</H>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -341,10 +364,44 @@ function OrderForm({ order, products, onCancel, onSaved }: { order?: InboxOrder;
         <label className="block text-sm font-medium sm:col-span-2">Notes<textarea className="input mt-1" rows={2} maxLength={1000} placeholder="Internal notes — optional" value={v.notes} onChange={(e) => set("notes", e.target.value)} /></label>
       </div>
 
-      <div className="sticky bottom-0 -mx-5 -mb-5 flex justify-end gap-2 border-t bg-white px-5 py-3">
+      <div className="sticky bottom-0 -mx-4 -mb-4 flex justify-end gap-2 border-t bg-white px-4 py-3 sm:-mx-8 sm:-mb-8 sm:px-8">
         <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
         <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : "Save Order"}</button>
       </div>
     </form>
+  );
+}
+
+/** Store product chooser: shows each product's front photo, name, price and stock. Out-of-stock products can't be picked. */
+function ProductPicker({ products, value, onPick }: { products: PickProduct[]; value: PickProduct | null; onPick: (p: PickProduct) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const list = products.filter((p) => p.title.toLowerCase().includes(q.trim().toLowerCase()));
+  const thumb = (p: PickProduct, size: string) => (p.image_url ? <Img src={p.image_url} alt="" sizes="56px" className={`${size} shrink-0 rounded-lg object-cover`} /> : <span className={`${size} flex shrink-0 items-center justify-center rounded-lg bg-gray-200`}>🛍️</span>);
+  const stockTag = (p: PickProduct) => <span className={`text-xs font-semibold ${p.stock <= 0 ? "text-red-600" : p.stock <= 5 ? "text-amber-600" : "text-green-700"}`}>{p.stock <= 0 ? "Out of stock" : `Stock: ${p.stock}`}</span>;
+  return (
+    <div>
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className={`flex w-full items-center gap-3 rounded-lg border bg-white p-2 text-left ${open ? "border-brand-600 ring-2 ring-brand-200" : "border-gray-300"}`}>
+        {value ? <>{thumb(value, "h-14 w-14")}<span className="min-w-0 flex-1"><span className="block truncate font-medium">{value.title}</span><span className="flex items-center gap-2 text-xs text-gray-500">{inr(value.price)} · {stockTag(value)}</span></span></>
+          : <><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-xl">🛍️</span><span className="flex-1 text-gray-500">Select a product…</span></>}
+        <span aria-hidden className="pr-1 text-gray-400">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="mt-1 rounded-lg border bg-white shadow-sm">
+          <input autoFocus className="input !rounded-b-none !border-0 !border-b" placeholder="Search products…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <ul className="max-h-64 overflow-y-auto" role="listbox">
+            {list.map((p) => (
+              <li key={p.id}>
+                <button type="button" role="option" aria-selected={value?.id === p.id} disabled={p.stock <= 0} onClick={() => { onPick(p); setOpen(false); setQ(""); }}
+                  className="flex w-full items-center gap-3 border-b p-2 text-left last:border-0 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
+                  {thumb(p, "h-12 w-12")}<span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{p.title}</span><span className="flex items-center gap-2 text-xs text-gray-500">{inr(p.price)} · {stockTag(p)}</span></span>
+                </button>
+              </li>
+            ))}
+            {list.length === 0 && <li className="p-4 text-center text-sm text-gray-500">No products found</li>}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }

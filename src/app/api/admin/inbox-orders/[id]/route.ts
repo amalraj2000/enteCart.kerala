@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, readJson } from "@/lib/http";
-import { PAY_STATUSES, STATUSES, cleanInbox, totals, validateInbox, type InboxInput } from "@/lib/inbox";
+import { PAY_STATUSES, STATUSES, cleanInbox, resolveItems, totals, validateInbox, type InboxInput } from "@/lib/inbox";
 import { firstError, parseId } from "@/lib/validate";
 import { inboxGuard } from "../guard";
 
@@ -14,6 +14,11 @@ export async function PUT(req: Request, { params }: Ctx) {
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
   const v = cleanInbox(b);
+  const cur = (await g.c.execute({ sql: "SELECT product_id, title, qty, price, image_url FROM inbox_order_items WHERE order_id = ?", args: [id] })).rows
+    .map((r) => ({ product_id: r.product_id == null ? null : Number(r.product_id), title: String(r.title), qty: Number(r.qty), price: Number(r.price), image_url: String(r.image_url || "") }));
+  const res = await resolveItems(g.c, v.items, cur);
+  if (res.error) return NextResponse.json({ error: res.error, errors: { items: res.error } }, { status: 400 });
+  v.items = res.items;
   const errors = validateInbox(v, b);
   if (firstError(errors)) return NextResponse.json({ error: firstError(errors), errors }, { status: 400 });
   const { subtotal, total } = totals(v);

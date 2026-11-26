@@ -76,28 +76,28 @@ export default function ReviewsManager({ reviews, pi, filter, filters, counts, e
 
       {reviews.length === 0 ? <p className="card p-8 text-center text-gray-500">No {filter === "All" ? "" : filter.toLowerCase() + " "}reviews yet.</p> : (
         <div className="card overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="rtable w-full min-w-[760px] text-left text-sm">
             <thead className="border-b bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
               <tr><th className="p-3">Product</th><th className="p-3">Customer</th><th className="p-3">Rating</th><th className="p-3">Status</th><th className="p-3 text-right">Actions</th></tr>
             </thead>
             <tbody className="divide-y">
               {reviews.map((r) => (
                 <tr key={r.id} className="align-middle">
-                  <td className="p-3">
+                  <td data-label="Product" className="p-3">
                     <div className="flex items-center gap-3">
                       {r.product_image ? <Img src={r.product_image} alt={r.product_title} sizes="48px" className="h-12 w-12 shrink-0 rounded-lg object-cover" /> : <span className="h-12 w-12 shrink-0 rounded-lg bg-gray-100" />}
                       <span className="max-w-[12rem] font-medium leading-snug">{r.product_title}</span>
                     </div>
                   </td>
-                  <td className="p-3"><p className="font-medium">{r.user_name}</p><p className="break-all text-xs text-gray-500">{r.email || r.phone}</p></td>
-                  <td className="p-3"><Stars value={r.rating} /><p className="mt-0.5 text-xs text-gray-400">{formatIst(r.created_at).split(",")[0]}</p></td>
-                  <td className="p-3">
+                  <td data-label="Customer" className="p-3"><p className="font-medium">{r.user_name}</p><p className="break-all text-xs text-gray-500">{r.email || r.phone}</p></td>
+                  <td data-label="Rating" className="p-3"><Stars value={r.rating} /><p className="mt-0.5 text-xs text-gray-400">{formatIst(r.created_at).split(",")[0]}</p></td>
+                  <td data-label="Status" className="p-3">
                     <div className="flex flex-wrap gap-1">
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${BADGE[r.status] ?? BADGE.pending}`}>{r.status}</span>
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.active ? "bg-sky-100 text-sky-800" : "bg-gray-200 text-gray-600"}`}>{r.active ? "Active" : "Inactive"}</span>
                     </div>
                   </td>
-                  <td className="p-3">
+                  <td data-label="Actions" className="p-3">
                     <div className="flex justify-end gap-1.5">
                       <IconBtn kind="view" label={`View review by ${r.user_name}`} onClick={() => setModal({ kind: "view", id: r.id })} />
                       <IconBtn kind="edit" label={`Edit review by ${r.user_name}`} onClick={() => setModal({ kind: "edit", id: r.id })} />

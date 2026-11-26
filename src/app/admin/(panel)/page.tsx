@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/session";
 import { parseId } from "@/lib/validate";
 import { staffNameSql, welcomeName } from "@/lib/staffLabel";
 import { orderLabel } from "@/lib/orderNo";
+import { inboxEnabled } from "@/lib/inbox";
 import { inr } from "@/lib/types";
 import { formatIst, istDay, istMonth } from "@/lib/istDate";
 import { statusColor } from "@/components/OrderList";
@@ -73,6 +74,28 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       all("SELECT id, title, stock FROM products WHERE created_by = ? AND stock <= 5 ORDER BY stock, title LIMIT 5", [s]),
     ]);
   }
+  // Inbox orders (DM orders) count exactly like website orders — same tiles, same rules. Owner only, and only while Inbox Orders is ON.
+  // Dates use the order date the owner entered. "Earned" = not cancelled and not refunded (same as the Orders page); profit uses the product's Meesho price.
+  // When one admin's products are selected, only the inbox lines for THEIR products are counted.
+  const withInbox = me.role === "admin" && (await inboxEnabled(c));
+  let inboxRecent: Row[] = [];
+  if (withInbox) {
+    const OK = "o.status != 'Cancelled' AND o.payment_status != 'Refunded'";
+    const iItems = `FROM inbox_order_items oi JOIN inbox_orders o ON o.id = oi.order_id LEFT JOIN products p ON p.id = oi.product_id WHERE (? = 0 OR p.created_by = ?)`;
+    const [iProc, iToday, iRev, iProfit, iRecent] = await Promise.all([
+      one(`SELECT COUNT(DISTINCT o.id) n ${iItems} AND o.status IN ('Pending','Confirmed','Processing')`, [s, s]),
+      one(`SELECT COUNT(DISTINCT o.id) n ${iItems} AND o.order_date = ?`, [s, s, today]),
+      one(`SELECT COALESCE(SUM(oi.qty * oi.price), 0) n ${iItems} AND ${OK} AND substr(o.order_date, 1, 7) = ?`, [s, s, month]),
+      one(`SELECT COALESCE(SUM(oi.qty * (oi.price - p.meesho_price)), 0) n ${iItems} AND p.meesho_price > 0 AND ${OK} AND substr(o.order_date, 1, 7) = ?`, [s, s, month]),
+      all(`SELECT o.id, o.order_no, o.customer_name, o.status, o.created_at, SUM(oi.qty * oi.price) AS total, 1 AS inbox ${iItems} GROUP BY o.id ORDER BY o.id DESC LIMIT 5`, [s, s]),
+    ]);
+    toProcess = { n: Number(toProcess.n) + Number(iProc.n) };
+    todayOrders = { n: Number(todayOrders.n) + Number(iToday.n) };
+    revenue = { n: Number(revenue.n) + Number(iRev.n) };
+    profit = { n: Number(profit.n) + Number(iProfit.n) };
+    inboxRecent = iRecent;
+    recent = [...recent, ...inboxRecent].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 5);
+  }
   const needStock = Number(lowCount.n) + Number(outCount.n);
   const waiting = Number(pendingReviews.n);
   const scopeName = staff.find((x) => Number(x.id) === scopeId)?.name ?? "";
@@ -117,8 +140,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               <thead className="text-xs text-gray-500"><tr><th className="pb-2">Order</th><th className="pb-2">Customer</th><th className="pb-2">Status</th><th className="pb-2 text-right">{scoped ? "Amount" : "Total"}</th></tr></thead>
               <tbody>
                 {recent.map((o) => (
-                  <tr key={String(o.id)} className="border-t">
-                    <td className="py-2"><Link href={`/admin/orders/${o.id}`} className="font-semibold text-brand-700 hover:underline">{orderLabel(o)}</Link><p className="text-xs text-gray-400">{formatIst(o.created_at).split(",")[0]}</p></td>
+                  <tr key={`${o.inbox ? "i" : "w"}${String(o.id)}`} className="border-t">
+                    <td className="py-2"><Link href={o.inbox ? `/admin/inbox-orders?q=${encodeURIComponent(String(o.order_no))}` : `/admin/orders/${o.id}`} className="font-semibold text-brand-700 hover:underline">{orderLabel(o)}</Link><p className="text-xs text-gray-400">{formatIst(o.created_at).split(",")[0]}</p></td>
                     <td className="py-2">{String(o.customer_name)}</td>
                     <td className="py-2"><span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusColor(String(o.status))}`}>{String(o.status)}</span></td>
                     <td className="py-2 text-right font-semibold">{inr(Number(o.total))}</td>

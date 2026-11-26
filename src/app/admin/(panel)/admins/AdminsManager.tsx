@@ -149,19 +149,19 @@ export default function AdminsManager({ admins, pi, meId }: { admins: A[]; pi: P
 
       {/* Tablet / desktop: table */}
       <div className="card hidden overflow-x-auto md:block">
-        <table className="w-full text-left text-sm">
+        <table className="rtable w-full text-left text-sm">
           <thead className="bg-brand-50"><tr><th className="p-3">Name</th><th className="p-3">Vendor name</th><th className="p-3">Email</th><th className="p-3">Phone</th><th className="p-3">Role</th><th className="p-3">Status</th><th className="p-3">Added</th><th className="p-3 text-right">Actions</th></tr></thead>
           <tbody>
             {admins.map((a) => (
               <tr key={a.id} className="border-t">
-                <td className="p-3 font-medium">{a.name && a.name !== "Admin" ? a.name : a.role === "admin" ? "Super admin" : "—"}{a.id === meId && <span className="ml-2 text-xs font-normal text-gray-400">(you)</span>}</td>
-                <td className="p-3 text-gray-700">{a.role === "subadmin" ? a.vendor_name || <span className="text-gray-400">not set</span> : "—"}</td>
-                <td className="p-3 text-gray-700">{a.email || "—"}</td>
-                <td className="p-3 text-gray-700">{a.phone || "—"}</td>
-                <td className="p-3"><RoleBadge a={a} /></td>
-                <td className="p-3"><Status a={a} /></td>
-                <td className="whitespace-nowrap p-3 text-gray-600">{a.created_at.slice(0, 10)}</td>
-                <td className="p-3"><div className="flex flex-wrap justify-end gap-1.5"><Actions a={a} cls="!min-h-0 !px-2.5 !py-1 text-xs" /></div></td>
+                <td data-label="Name" className="p-3 font-medium">{a.name && a.name !== "Admin" ? a.name : a.role === "admin" ? "Super admin" : "—"}{a.id === meId && <span className="ml-2 text-xs font-normal text-gray-400">(you)</span>}</td>
+                <td data-label="Vendor name" className="p-3 text-gray-700">{a.role === "subadmin" ? a.vendor_name || <span className="text-gray-400">not set</span> : "—"}</td>
+                <td data-label="Email" className="p-3 text-gray-700">{a.email || "—"}</td>
+                <td data-label="Phone" className="p-3 text-gray-700">{a.phone || "—"}</td>
+                <td data-label="Role" className="p-3"><RoleBadge a={a} /></td>
+                <td data-label="Status" className="p-3"><Status a={a} /></td>
+                <td data-label="Added" className="whitespace-nowrap p-3 text-gray-600">{a.created_at.slice(0, 10)}</td>
+                <td data-label="Actions" className="p-3"><div className="flex flex-wrap justify-end gap-1.5"><Actions a={a} cls="!min-h-0 !px-2.5 !py-1 text-xs" /></div></td>
               </tr>
             ))}
           </tbody>

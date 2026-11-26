@@ -44,7 +44,7 @@ export default async function Payments({ searchParams }: { searchParams: Promise
       </div>
       {rows.length === 0 ? <div className="card p-10 text-center text-gray-500">No payments here yet.</div> : (
         <div className="card overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
+          <table className="rtable w-full min-w-[860px] text-left text-sm">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500"><tr>
               <th className="p-3">Order</th><th className="p-3">Customer</th><th className="p-3">Amount</th><th className="p-3">Method</th><th className="p-3">Razorpay IDs</th><th className="p-3">Status</th><th className="p-3">Date</th><th className="p-3" />
             </tr></thead>
@@ -53,14 +53,14 @@ export default async function Payments({ searchParams }: { searchParams: Promise
                 const due = p.status === "Paid" && p.order_status === "Cancelled";
                 return (
                   <tr key={Number(p.id)} className="align-top">
-                    <td className="p-3"><Link className="font-semibold text-brand-700 hover:underline" href={`/admin/orders/${p.order_id}`}>{orderLabel({ id: p.order_id, order_no: p.order_no })}</Link><div className="text-xs text-gray-500">{String(p.order_status)}</div></td>
-                    <td className="p-3">{String(p.customer_name)}<div className="text-xs text-gray-500">{String(p.phone)}</div></td>
-                    <td className="p-3 font-semibold">{inr(Number(p.amount))}</td>
-                    <td className="p-3">{p.method ? <span className="capitalize">{String(p.method)}</span> : "—"}<div className="text-xs text-gray-500">{String(p.method_detail || "")}</div></td>
-                    <td className="p-3 font-mono text-xs text-gray-600"><div>{String(p.razorpay_order_id)}</div><div>{String(p.razorpay_payment_id) || "—"}</div>{p.refund_id ? <div className="text-blue-700">{String(p.refund_id)}</div> : null}</td>
-                    <td className="p-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badge[String(p.status)] || ""}`}>{String(p.status) === "Created" ? "Not completed" : String(p.status)}</span>{due && <div className="mt-1 text-xs font-semibold text-red-600">Refund due</div>}</td>
-                    <td className="p-3 text-xs text-gray-500">{String(p.paid_at || p.created_at)}</td>
-                    <td className="p-3">{due && <RefundButton id={Number(p.id)} amount={inr(Number(p.amount))} />}</td>
+                    <td data-label="Order" className="p-3"><Link className="font-semibold text-brand-700 hover:underline" href={`/admin/orders/${p.order_id}`}>{orderLabel({ id: p.order_id, order_no: p.order_no })}</Link><div className="text-xs text-gray-500">{String(p.order_status)}</div></td>
+                    <td data-label="Customer" className="p-3">{String(p.customer_name)}<div className="text-xs text-gray-500">{String(p.phone)}</div></td>
+                    <td data-label="Amount" className="p-3 font-semibold">{inr(Number(p.amount))}</td>
+                    <td data-label="Method" className="p-3">{p.method ? <span className="capitalize">{String(p.method)}</span> : "—"}<div className="text-xs text-gray-500">{String(p.method_detail || "")}</div></td>
+                    <td data-label="Razorpay IDs" className="p-3 font-mono text-xs text-gray-600"><div>{String(p.razorpay_order_id)}</div><div>{String(p.razorpay_payment_id) || "—"}</div>{p.refund_id ? <div className="text-blue-700">{String(p.refund_id)}</div> : null}</td>
+                    <td data-label="Status" className="p-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badge[String(p.status)] || ""}`}>{String(p.status) === "Created" ? "Not completed" : String(p.status)}</span>{due && <div className="mt-1 text-xs font-semibold text-red-600">Refund due</div>}</td>
+                    <td data-label="Date" className="p-3 text-xs text-gray-500">{String(p.paid_at || p.created_at)}</td>
+                    <td data-label="Action" className="p-3">{due && <RefundButton id={Number(p.id)} amount={inr(Number(p.amount))} />}</td>
                   </tr>
                 );
               })}

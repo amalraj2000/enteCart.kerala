@@ -3,8 +3,8 @@ import { requireAdmin } from "@/lib/session";
 import { editableOrderIds } from "@/lib/permissions";
 import { withImages } from "@/lib/orderItems";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
-import { ORDER_STATUSES } from "@/lib/types";
-import { istDay, istMonth, isMonth, isRealDay } from "@/lib/istDate";
+import { istDay, istMonth } from "@/lib/istDate";
+import { buildOrderFilter } from "@/lib/orderFilters";
 import OrdersView from "./OrdersView";
 
 export const dynamic = "force-dynamic";
@@ -12,40 +12,33 @@ export const dynamic = "force-dynamic";
 export default async function AdminOrders({ searchParams }: { searchParams: Promise<{ page?: string; status?: string; date?: string; month?: string; q?: string }> }) {
   const sp = await searchParams;
   const me = await requireAdmin(); // the layout already guarantees staff
-  const status = typeof sp.status === "string" && ORDER_STATUSES.includes(sp.status) ? sp.status : "All";
   const c = await db();
-
-  // Date filter (in IST). Nothing chosen = TODAY. ?date=2026-11-18 · ?month=2026-11 · ?date=all
-  const today = istDay();
-  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 60) : ""; // search by order no, customer name, phone or email — across ALL dates unless a date is chosen
-  const range: { kind: "day" | "month" | "all"; value: string } =
-    sp.date === "all" ? { kind: "all", value: "" }
-    : typeof sp.month === "string" && isMonth(sp.month) ? { kind: "month", value: sp.month }
-    : typeof sp.date === "string" && isRealDay(sp.date) ? { kind: "day", value: sp.date }
-    : q ? { kind: "all", value: "" } : { kind: "day", value: today };
-  const dateSql = range.kind === "all" ? "1=1" : range.kind === "day" ? "date(created_at, '+330 minutes') = ?" : "strftime('%Y-%m', created_at, '+330 minutes') = ?";
-  const dateArgs: (string | number)[] = range.kind === "all" ? [] : [range.value];
-  let searchSql = "1=1";
-  if (q) {
-    const l = `%${q.replace(/[%_]/g, "")}%`;
-    searchSql = "(order_no LIKE ? OR customer_name LIKE ? OR phone LIKE ? OR user_id IN (SELECT id FROM users WHERE email LIKE ? OR name LIKE ?))";
-    dateArgs.push(l, l, l, l, l);
-  }
-  const where = `${dateSql} AND ${searchSql}`;
+  const { status, q, today, range, where, dateArgs, withInbox, iWhere, iArgs, all, allArgs } = await buildOrderFilter(c, me.role, sp); // same filters as the CSV export
 
   const counts: Record<string, number> = { All: 0 };
-  for (const r of (await c.execute({ sql: `SELECT status, COUNT(*) AS n FROM orders WHERE ${where} GROUP BY status`, args: dateArgs })).rows) {
+  for (const r of (await c.execute({ sql: `SELECT status, COUNT(*) AS n FROM (${all}) GROUP BY status`, args: allArgs })).rows) {
     counts[String(r.status)] = Number(r.n);
     counts.All += Number(r.n);
   }
-  // Money actually earned in this period: not cancelled, and online orders only once paid.
-  const sales = Number((await c.execute({ sql: `SELECT COALESCE(SUM(total), 0) AS n FROM orders WHERE ${where} AND status != 'Cancelled' AND payment_status NOT IN ('Unpaid', 'Refunded')`, args: dateArgs })).rows[0].n);
+  // Money actually earned in this period: not cancelled, and online orders only once paid. (Inbox orders: not cancelled and not refunded.)
+  let sales = Number((await c.execute({ sql: `SELECT COALESCE(SUM(total), 0) AS n FROM orders WHERE ${where} AND status != 'Cancelled' AND payment_status NOT IN ('Unpaid', 'Refunded')`, args: dateArgs })).rows[0].n);
+  if (withInbox) sales += Number((await c.execute({ sql: `SELECT COALESCE(SUM(total), 0) AS n FROM inbox_orders WHERE ${iWhere} AND status != 'Cancelled' AND payment_status != 'Refunded'`, args: iArgs })).rows[0].n);
   const pi = pageInfo(counts[status] ?? 0, parsePage(sp.page));
-  const rows = (await c.execute({
-    sql: `SELECT * FROM orders WHERE ${where}${status === "All" ? "" : " AND status = ?"} ORDER BY id DESC LIMIT ${PAGE_SIZE} OFFSET ?`,
-    args: [...dateArgs, ...(status === "All" ? [] : [status]), pi.offset],
-  })).rows;
-  const editable = await editableOrderIds(c, me, rows.map((r) => Number(r.id))); // sub admin: only orders containing their products
-  const orders = (await withImages(rows, { admins: true })).map((o) => ({ ...o, editable: editable.has(Number(o.id)) }));
-  return <OrdersView orders={orders} counts={counts} status={status} pi={pi} scoped={me.role !== "admin"} range={range} q={q} sales={sales} today={today} yesterday={istDay(-1)} thisMonth={istMonth()} />;
+  const page = (await c.execute({
+    sql: `SELECT k, id FROM (${all}) ${status === "All" ? "" : "WHERE status = ?"} ORDER BY created_at DESC, id DESC LIMIT ${PAGE_SIZE} OFFSET ?`,
+    args: [...allArgs, ...(status === "All" ? [] : [status]), pi.offset],
+  })).rows.map((r) => ({ k: String(r.k), id: Number(r.id) }));
+  const wIds = page.filter((r) => r.k === "w").map((r) => r.id), iIds = page.filter((r) => r.k === "i").map((r) => r.id);
+  const wRows = wIds.length ? (await c.execute({ sql: `SELECT * FROM orders WHERE id IN (${wIds.map(() => "?").join(",")})`, args: wIds })).rows : [];
+  const editable = await editableOrderIds(c, me, wIds); // sub admin: only orders containing their products
+  const wOrders = new Map((await withImages(wRows, { admins: true })).map((o) => [Number(o.id), { ...o, kind: "web", editable: editable.has(Number(o.id)) }]));
+  const iRows = iIds.length ? (await c.execute({ sql: `SELECT * FROM inbox_orders WHERE id IN (${iIds.map(() => "?").join(",")})`, args: iIds })).rows : [];
+  const iItems = iIds.length ? (await c.execute({ sql: `SELECT order_id, title, qty, image_url FROM inbox_order_items WHERE order_id IN (${iIds.map(() => "?").join(",")}) ORDER BY id`, args: iIds })).rows : [];
+  const iOrders = new Map(iRows.map((r) => [Number(r.id), {
+    kind: "inbox", id: Number(r.id), order_no: String(r.order_no), customer_name: String(r.customer_name), phone: String(r.phone), source: String(r.source), status: String(r.status),
+    payment_status: String(r.payment_status), payment_method: String(r.payment_method), total: Number(r.total), order_date: String(r.order_date), created_at: String(r.created_at),
+    items: iItems.filter((i) => Number(i.order_id) === Number(r.id)).map((i) => ({ title: String(i.title), qty: Number(i.qty), image_url: String(i.image_url || "") })),
+  }]));
+  const orders = page.map((r) => (r.k === "w" ? wOrders.get(r.id) : iOrders.get(r.id))).filter((o) => !!o) as unknown as Parameters<typeof OrdersView>[0]["orders"];
+  return <OrdersView orders={orders} counts={counts} status={status} pi={pi} scoped={me.role !== "admin"} range={range} q={q} hasInbox={withInbox} sales={sales} today={today} yesterday={istDay(-1)} thisMonth={istMonth()} />;
 }

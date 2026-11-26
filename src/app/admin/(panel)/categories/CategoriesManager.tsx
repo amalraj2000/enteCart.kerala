@@ -1,7 +1,6 @@
 "use client";
 import SearchBox from "@/components/SearchBox";
 import IconBtn from "@/components/IconBtn";
-import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/Toaster";
@@ -40,7 +39,7 @@ export default function CategoriesManager({ categories, pi, q = "" }: { categori
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="space-y-4">
       <h1 className="text-xl font-bold">Categories ({pi.total})</h1>
       <SearchBox path="/admin/categories" q={q} placeholder="Search categories by name" />
       <form onSubmit={add} noValidate className="card p-4">
@@ -52,22 +51,33 @@ export default function CategoriesManager({ categories, pi, q = "" }: { categori
         <FieldError msg={err ?? undefined} />
       </form>
 
-      <div className="card divide-y">
-        {categories.map((c) => (
-          <div key={c.id} className="flex flex-wrap items-center gap-3 p-3">
-            <div className="min-w-0 flex-1">
-              <p className="font-medium">{c.name}<span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${c.status === "inactive" ? "bg-gray-200 text-gray-600" : "bg-green-100 text-green-800"}`}>{c.status === "inactive" ? "Inactive" : "Active"}</span></p>
-              <p className="text-xs text-gray-500">{c.count} product{c.count === 1 ? "" : "s"} · Added by <span className="font-medium text-gray-600">{c.added_by_name || "—"}</span></p>
-            </div>
-            {c.editable === false
-              ? <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Created by another admin">View only</span>
-              : <>
-                  <IconBtn kind="edit" label={`Edit ${c.name}`} href={`/admin/categories/${c.id}/edit`} />
-                  <IconBtn kind="delete" label={`Delete ${c.name}`} onClick={() => del(c)} />
-                </>}
-          </div>
-        ))}
-        {!categories.length && <p className="p-6 text-center text-gray-500">{q ? `No categories match “${q}”.` : "No categories yet."}</p>}
+      <div className="card overflow-x-auto">
+        <table className="rtable w-full min-w-[520px] text-left text-sm">
+          <thead className="border-b bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <tr><th className="p-3">Category</th><th className="p-3">Status</th><th className="p-3">Products</th><th className="p-3">Added by</th><th className="p-3 text-right">Actions</th></tr>
+          </thead>
+          <tbody className="divide-y">
+            {categories.map((c) => (
+              <tr key={c.id} className="align-middle">
+                <td data-label="Category" className="p-3 font-medium">{c.name}</td>
+                <td data-label="Status" className="p-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${c.status === "inactive" ? "bg-gray-200 text-gray-600" : "bg-green-100 text-green-800"}`}>{c.status === "inactive" ? "Inactive" : "Active"}</span></td>
+                <td data-label="Products" className="p-3">{c.count}</td>
+                <td data-label="Added by" className="p-3 text-gray-600">{c.added_by_name || "—"}</td>
+                <td data-label="Actions" className="p-3">
+                  <div className="flex justify-end gap-1.5">
+                    {c.editable === false
+                      ? <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="Created by another admin">View only</span>
+                      : <>
+                          <IconBtn kind="edit" label={`Edit ${c.name}`} href={`/admin/categories/${c.id}/edit`} />
+                          <IconBtn kind="delete" label={`Delete ${c.name}`} onClick={() => del(c)} />
+                        </>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!categories.length && <tr><td colSpan={5} className="p-6 text-center text-gray-500">{q ? `No categories match “${q}”.` : "No categories yet."}</td></tr>}
+          </tbody>
+        </table>
       </div>
       <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/categories?${new URLSearchParams({ ...(q ? { q } : {}), ...(p > 1 ? { page: String(p) } : {}) })}`} />
     </div>

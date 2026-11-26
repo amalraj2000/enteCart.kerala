@@ -61,18 +61,18 @@ export default function UsersTable({ users, pi, staffRole }: { users: U[]; pi: P
 
       {/* Tablet / desktop: table */}
       <div className="card hidden overflow-x-auto md:block">
-        <table className="w-full text-left text-sm">
+        <table className="rtable w-full text-left text-sm">
           <thead className="bg-brand-50"><tr><th className="p-3">ID</th><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Phone</th><th className="p-3">Role / Status</th><th className="p-3">Registered</th><th className="p-3 text-right">Actions</th></tr></thead>
           <tbody>
             {users.map((u) => (
               <tr key={u.id} className="border-t">
-                <td className="p-3">{u.id}</td>
-                <td className="p-3 font-medium"><Link href={`/admin/users/${u.id}`} className="hover:text-brand-700 hover:underline">{u.name || "—"}</Link></td>
-                <td className="p-3 text-gray-700">{u.email || "—"}</td>
-                <td className="p-3 text-gray-700">{u.phone || "—"}{u.phone && !!u.phone_from_address && <span className="block text-[11px] text-gray-400" title="Not a login number: taken from the customer's saved address or latest order">from address</span>}</td>
-                <td className="p-3"><Status u={u} /></td>
-                <td className="whitespace-nowrap p-3 text-gray-600">{u.created_at.slice(0, 10)}</td>
-                <td className="p-3"><div className="flex flex-wrap justify-end gap-1.5"><Actions u={u} cls="!min-h-0 !px-2.5 !py-1 text-xs" /></div></td>
+                <td data-label="ID" className="p-3">{u.id}</td>
+                <td data-label="Name" className="p-3 font-medium"><Link href={`/admin/users/${u.id}`} className="hover:text-brand-700 hover:underline">{u.name || "—"}</Link></td>
+                <td data-label="Email" className="p-3 text-gray-700">{u.email || "—"}</td>
+                <td data-label="Phone" className="p-3 text-gray-700">{u.phone || "—"}{u.phone && !!u.phone_from_address && <span className="block text-[11px] text-gray-400" title="Not a login number: taken from the customer's saved address or latest order">from address</span>}</td>
+                <td data-label="Role / Status" className="p-3"><Status u={u} /></td>
+                <td data-label="Registered" className="whitespace-nowrap p-3 text-gray-600">{u.created_at.slice(0, 10)}</td>
+                <td data-label="Actions" className="p-3"><div className="flex flex-wrap justify-end gap-1.5"><Actions u={u} cls="!min-h-0 !px-2.5 !py-1 text-xs" /></div></td>
               </tr>
             ))}
             {!users.length && <tr><td colSpan={7} className="p-6 text-center text-gray-500">No users yet.</td></tr>}

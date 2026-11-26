@@ -45,3 +45,22 @@ body { @apply bg-gray-50 text-gray-900 antialiased; }
 @keyframes ek-page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .ek-page { animation: ek-page-in 0.22s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ek-page { animation: none; } }
+
+/* Admin panel pages use the full screen width (the storefront stays in its centred column). */
+body:has(.admin-shell) main,
+body:has(.admin-shell) header .max-w-6xl,
+body:has(.admin-shell) footer .max-w-6xl { max-width: none; }
+@media (min-width: 1024px) { body:has(.admin-shell) main, body:has(.admin-shell) header .max-w-6xl, body:has(.admin-shell) footer .max-w-6xl { padding-left: 2rem; padding-right: 2rem; } }
+
+/* Admin tables turn into stacked cards on phones: each cell shows its column name (data-label) next to its value. */
+@media (max-width: 767px) {
+  table.rtable { min-width: 0 !important; }
+  table.rtable thead { display: none; }
+  table.rtable, table.rtable tbody, table.rtable tr, table.rtable td { display: block; width: 100%; }
+  table.rtable tr { padding: 0.75rem 1rem; }
+  table.rtable td { display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: center; column-gap: 0.75rem; row-gap: 0.15rem; padding: 0.4rem 0 !important; text-align: right; }
+  table.rtable td > * { grid-column: 2; justify-self: end; min-width: 0; }
+  table.rtable td::before { grid-column: 1; grid-row: 1; content: attr(data-label); text-align: left; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; }
+  table.rtable td[data-label=""]::before, table.rtable td:not([data-label])::before { display: none; }
+  table.rtable td[colspan] { display: block; text-align: center; }
+}

@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
 import { bad, readJson } from "@/lib/http";
-import { cleanInbox, nextOrderNo, totals, validateInbox } from "@/lib/inbox";
+import { cleanInbox, nextOrderNo, resolveItems, totals, validateInbox } from "@/lib/inbox";
 import { firstError } from "@/lib/validate";
 import { inboxGuard } from "./guard";
 
 export const dynamic = "force-dynamic";
 
-/** Create an inbox order (order id, line items and first history row are written in ONE transaction). */
+/** Create an inbox order — like a normal checkout: ONE order with one or more products. Order id, items and first history row are written in ONE transaction. */
 export async function POST(req: Request) {
   const g = await inboxGuard(); if ("error" in g) return g.error;
   const b = await readJson(req);
   if (!b) return bad("Invalid request");
   const v = cleanInbox(b);
+  const res = await resolveItems(g.c, v.items, null); // name / price / image come from the store's product, not the browser
+  if (res.error) return NextResponse.json({ error: res.error, errors: { items: res.error } }, { status: 400 });
+  v.items = res.items;
   const errors = validateInbox(v, b);
   if (firstError(errors)) return NextResponse.json({ error: firstError(errors), errors }, { status: 400 });
   const { subtotal, total } = totals(v);

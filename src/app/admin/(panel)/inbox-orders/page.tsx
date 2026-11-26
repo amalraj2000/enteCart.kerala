@@ -2,13 +2,11 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireSuperAdmin } from "@/lib/session";
 import { PAGE_SIZE, pageInfo, parsePage } from "@/lib/paginate";
-import { PAY_STATUSES, SOURCES, STATUSES, inboxEnabled } from "@/lib/inbox";
-import { isRealDay } from "@/lib/istDate";
+import { buildInboxFilter, inboxEnabled } from "@/lib/inbox";
 import InboxManager, { type InboxOrder, type PickProduct } from "./InboxManager";
 
 export const dynamic = "force-dynamic";
 const SORTS: Record<string, string> = { newest: "o.id DESC", oldest: "o.id ASC", date: "o.order_date DESC, o.id DESC", high: "o.total DESC, o.id DESC", low: "o.total ASC, o.id ASC" };
-const pick = (v: string | undefined, list: readonly string[]) => (v && list.includes(v) ? v : "");
 
 /** Owner only. Blocked (not just hidden) while the Inbox Orders switch in Settings is OFF — saved orders stay in the database. */
 export default async function InboxOrdersPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -24,19 +22,8 @@ export default async function InboxOrdersPage({ searchParams }: { searchParams: 
     );
   }
   const sp = await searchParams;
-  const q = (sp.q ?? "").trim().slice(0, 60);
-  const status = pick(sp.status, STATUSES), source = pick(sp.source, SOURCES), pay = pick(sp.pay, PAY_STATUSES);
-  const from = sp.from && isRealDay(sp.from) ? sp.from : "", to = sp.to && isRealDay(sp.to) ? sp.to : "";
+  const { q, status, source, pay, from, to, where, args } = buildInboxFilter(sp);
   const sort = sp.sort && SORTS[sp.sort] ? sp.sort : "newest";
-
-  const conds: string[] = [], args: (string | number)[] = [];
-  if (q) { conds.push("(o.customer_name LIKE ? OR o.phone LIKE ? OR o.order_no LIKE ?)"); const l = `%${q.replace(/[%_]/g, "")}%`; args.push(l, l, l); }
-  if (status) { conds.push("o.status = ?"); args.push(status); }
-  if (source) { conds.push("o.source = ?"); args.push(source); }
-  if (pay) { conds.push("o.payment_status = ?"); args.push(pay); }
-  if (from) { conds.push("o.order_date >= ?"); args.push(from); }
-  if (to) { conds.push("o.order_date <= ?"); args.push(to); }
-  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
 
   const total = Number((await c.execute({ sql: `SELECT COUNT(*) n FROM inbox_orders o ${where}`, args })).rows[0].n);
   const pi = pageInfo(total, parsePage(sp.page));
@@ -55,16 +42,12 @@ export default async function InboxOrdersPage({ searchParams }: { searchParams: 
     history: hist.filter((h) => Number(h.order_id) === Number(r.id)).map((h) => ({ event: String(h.event), actor: String(h.actor), created_at: String(h.created_at) })),
   }));
 
-  // Summary over ALL saved inbox orders (not just this page / filter). One row per order, so nothing is counted twice.
-  // "Sales value" = value of orders not cancelled. "Received" = only orders marked Paid (and not cancelled) — Pending / Refunded money is not counted.
-  const s = (await c.execute(`SELECT COUNT(*) n,
-      COALESCE(SUM(status = 'Pending'), 0) pending, COALESCE(SUM(status IN ('Confirmed','Processing')), 0) processing, COALESCE(SUM(status = 'Delivered'), 0) delivered,
-      COALESCE(SUM(CASE WHEN status != 'Cancelled' THEN total END), 0) sales,
-      COALESCE(SUM(CASE WHEN status != 'Cancelled' AND payment_status = 'Paid' THEN total END), 0) received FROM inbox_orders`)).rows[0];
-  const summary = { total: Number(s.n), pending: Number(s.pending), processing: Number(s.processing), delivered: Number(s.delivered), sales: Number(s.sales), received: Number(s.received) };
+  // Summary over ALL saved inbox orders (not just this page / filter): one row per order, so nothing is counted twice.
+  const s = (await c.execute("SELECT COUNT(*) n, COALESCE(SUM(status = 'Delivered'), 0) delivered FROM inbox_orders")).rows[0];
+  const summary = { total: Number(s.n), delivered: Number(s.delivered) };
 
-  const products: PickProduct[] = (await c.execute("SELECT id, title, price, image_url FROM products WHERE status = 'active' ORDER BY title LIMIT 500")).rows
-    .map((p) => ({ id: Number(p.id), title: String(p.title), price: Number(p.price), image_url: String(p.image_url || "") }));
+  const products: PickProduct[] = (await c.execute("SELECT id, title, price, image_url, stock FROM products WHERE status = 'active' ORDER BY title LIMIT 500")).rows
+    .map((p) => ({ id: Number(p.id), title: String(p.title), price: Number(p.price), image_url: String(p.image_url || ""), stock: Number(p.stock) }));
 
   return <InboxManager orders={orders} pi={pi} summary={summary} products={products} filters={{ q, status, source, pay, from, to, sort }} />;
 }

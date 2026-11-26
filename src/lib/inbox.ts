@@ -1,6 +1,6 @@
 import type { Client } from "@libsql/client";
 import { db } from "./db";
-import { istDay } from "./istDate";
+import { istDay, isRealDay } from "./istDate";
 import { str, type Errors } from "./validate";
 
 import { INBOX_KEY, MAX_LINES, PAY_METHODS, PAY_STATUSES, SOURCES, STATUSES } from "./inboxConsts";
@@ -73,3 +73,46 @@ export function totals(v: Pick<InboxInput, "items" | "delivery_charge" | "discou
 }
 
 export { nextOrderNo } from "./orderNo";
+
+/**
+ * Products come from the store, never from the browser: for every line with a product_id the title, image and price are read from the
+ * products table (so a typed name or price is ignored). Editing keeps the price an existing line already had. A line without a product
+ * is only allowed when editing and it is an unchanged line of that same order (old orders typed by hand before this rule).
+ * `checkStock` (new orders only): quantity may not exceed the product's stock.
+ */
+export async function resolveItems(c: Client, items: InboxItem[], existing: InboxItem[] | null): Promise<{ items: InboxItem[]; error: string | null }> {
+  const out: InboxItem[] = [];
+  for (const it of items) {
+    if (it.product_id) {
+      const p = (await c.execute({ sql: "SELECT id, title, price, image_url, stock, status FROM products WHERE id = ?", args: [it.product_id] })).rows[0];
+      if (!p) return { items: out, error: "A selected product no longer exists" };
+      const kept = existing?.find((e) => e.product_id === it.product_id);
+      if (!kept) {
+        if (String(p.status) !== "active") return { items: out, error: `“${p.title}” is not active in the store` };
+        if (Number.isInteger(it.qty) && it.qty > Number(p.stock)) return { items: out, error: Number(p.stock) <= 0 ? `“${p.title}” is out of stock` : `Only ${p.stock} of “${p.title}” in stock` };
+      }
+      out.push({ product_id: Number(p.id), title: String(p.title), qty: it.qty, price: kept ? kept.price : Number(p.price), image_url: String(p.image_url || "") });
+    } else {
+      const same = existing?.find((e) => e.product_id === null && e.title === it.title && e.price === it.price);
+      if (!same) return { items: out, error: "Select a product from the store for every line" };
+      out.push({ ...same, qty: it.qty });
+    }
+  }
+  return { items: out, error: null };
+}
+
+const pick = (v: string | undefined, list: readonly string[]) => (v && list.includes(v) ? v : "");
+/** Inbox list filters (search, status, source, payment, date range) — shared by the Inbox page and its CSV export. */
+export function buildInboxFilter(sp: Record<string, string | undefined>) {
+  const q = (sp.q ?? "").trim().slice(0, 60);
+  const status = pick(sp.status, STATUSES), source = pick(sp.source, SOURCES), pay = pick(sp.pay, PAY_STATUSES);
+  const from = sp.from && isRealDay(sp.from) ? sp.from : "", to = sp.to && isRealDay(sp.to) ? sp.to : "";
+  const conds: string[] = [], args: (string | number)[] = [];
+  if (q) { conds.push("(o.customer_name LIKE ? OR o.phone LIKE ? OR o.order_no LIKE ?)"); const l = `%${q.replace(/[%_]/g, "")}%`; args.push(l, l, l); }
+  if (status) { conds.push("o.status = ?"); args.push(status); }
+  if (source) { conds.push("o.source = ?"); args.push(source); }
+  if (pay) { conds.push("o.payment_status = ?"); args.push(pay); }
+  if (from) { conds.push("o.order_date >= ?"); args.push(from); }
+  if (to) { conds.push("o.order_date <= ?"); args.push(to); }
+  return { q, status, source, pay, from, to, where: conds.length ? `WHERE ${conds.join(" AND ")}` : "", args };
+}
