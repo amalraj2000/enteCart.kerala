@@ -3,11 +3,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "@/components/Toaster";
 
-const LINKS: [string, string, string, boolean?][] = [
+const LINKS: [string, string, string, boolean?, boolean?][] = [
   ["/admin", "Dashboard", "📊"],
   ["/admin/categories", "Categories", "🏷️"],
   ["/admin/products", "Products", "📦"],
   ["/admin/orders", "Orders", "🧾"],
+  ["/admin/inbox-orders", "Inbox Orders", "📥", true, true], // owner-only, switchable in Settings
   ["/admin/reviews", "Reviews", "⭐"],
   ["/admin/banners", "Banners", "🖼️"],
   ["/admin/users", "Users", "👥"],
@@ -16,14 +17,14 @@ const LINKS: [string, string, string, boolean?][] = [
   ["/admin/settings", "Settings", "⚙️", true], // owner-only
 ];
 
-export default function Sidebar({ role }: { role: "admin" | "subadmin" }) {
+export default function Sidebar({ role, inbox }: { role: "admin" | "subadmin"; inbox: boolean }) {
   const path = usePathname();
   const router = useRouter();
   return (
     <aside className="md:w-56 md:shrink-0">
       <div className="card grid grid-cols-3 gap-1 p-2 md:sticky md:top-24 md:flex md:flex-col">
         <p className="hidden px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-wider text-gray-400 md:block">{role === "admin" ? "Super admin panel" : "Sub admin panel"}</p>
-        {LINKS.filter(([, , , ownerOnly]) => !ownerOnly || role === "admin").map(([href, label, icon]) => {
+        {LINKS.filter(([, , , ownerOnly, switchable]) => (!ownerOnly || role === "admin") && (!switchable || inbox)).map(([href, label, icon]) => {
           const active = href === "/admin" ? path === href : path.startsWith(href);
           return (
             <Link key={href} href={href}

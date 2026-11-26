@@ -339,7 +339,7 @@ export function db(): Promise<Client> {
   return ready.then(getClient);
 }
 
-const SCHEMA_VERSION = "2026-11-push-1";
+const SCHEMA_VERSION = "2026-11-inbox-1";
 
 async function setupSchema(c: Client) {
       await migrateToRelational(c);
@@ -375,6 +375,56 @@ async function setupSchema(c: Client) {
       await c.execute("ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT NOT NULL DEFAULT ''").catch(() => {}); // already exists
       await c.execute("ALTER TABLE products ADD COLUMN created_at TEXT").catch(() => {}); // already exists (SQLite can't add a non-constant default)
       await c.execute("UPDATE products SET created_at = datetime('now') WHERE created_at IS NULL"); // existing products count as "added today" once
+
+      // Inbox orders: orders received by Instagram / Facebook / WhatsApp DM and typed in by the owner. Kept apart from `orders`
+      // on purpose — they have no customer account, never touch stock, and must not change the storefront revenue / profit numbers.
+      await c.batch([
+        `CREATE TABLE IF NOT EXISTS inbox_orders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_no TEXT NOT NULL UNIQUE,
+          customer_name TEXT NOT NULL,
+          phone TEXT NOT NULL,
+          house_name TEXT NOT NULL DEFAULT '',
+          street_name TEXT NOT NULL DEFAULT '',
+          city TEXT NOT NULL DEFAULT '',
+          state TEXT NOT NULL DEFAULT '',
+          pincode TEXT NOT NULL DEFAULT '',
+          instructions TEXT NOT NULL DEFAULT '',
+          source TEXT NOT NULL DEFAULT 'Other',
+          order_date TEXT NOT NULL,
+          payment_method TEXT NOT NULL DEFAULT 'Cash on Delivery',
+          payment_status TEXT NOT NULL DEFAULT 'Pending',
+          status TEXT NOT NULL DEFAULT 'Pending',
+          tracking_number TEXT NOT NULL DEFAULT '',
+          notes TEXT NOT NULL DEFAULT '',
+          subtotal REAL NOT NULL DEFAULT 0,
+          delivery_charge REAL NOT NULL DEFAULT 0,
+          discount REAL NOT NULL DEFAULT 0,
+          total REAL NOT NULL DEFAULT 0,
+          created_by INTEGER,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )`,
+        `CREATE TABLE IF NOT EXISTS inbox_order_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id INTEGER NOT NULL REFERENCES inbox_orders(id) ON DELETE CASCADE,
+          product_id INTEGER,
+          title TEXT NOT NULL,
+          qty INTEGER NOT NULL DEFAULT 1,
+          price REAL NOT NULL DEFAULT 0,
+          image_url TEXT NOT NULL DEFAULT ''
+        )`,
+        `CREATE TABLE IF NOT EXISTS inbox_order_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id INTEGER NOT NULL REFERENCES inbox_orders(id) ON DELETE CASCADE,
+          event TEXT NOT NULL,
+          actor TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )`,
+        "CREATE INDEX IF NOT EXISTS idx_inbox_items_order ON inbox_order_items(order_id)",
+        "CREATE INDEX IF NOT EXISTS idx_inbox_hist_order ON inbox_order_history(order_id)",
+        "CREATE INDEX IF NOT EXISTS idx_inbox_status ON inbox_orders(status)",
+      ].map((sql) => ({ sql, args: [] })), "write");
 
       await ensureAdmin(c);
 
