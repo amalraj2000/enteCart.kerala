@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 export type Range = { kind: "day" | "month" | "all"; value: string };
 
 /** Date controls for the Orders list: quick chips, a day picker with ‹ › arrows, and a month picker. Defaults to today (set by the page). */
-export default function DateFilter({ range, today, yesterday, thisMonth, status }: { range: Range; today: string; yesterday: string; thisMonth: string; status: string }) {
+export default function DateFilter({ range, today, yesterday, thisMonth, status, q = "" }: { q?: string; range: Range; today: string; yesterday: string; thisMonth: string; status: string }) {
   const router = useRouter();
-  const href = (p: Record<string, string>) => `/admin/orders?${new URLSearchParams({ ...p, ...(status !== "All" ? { status } : {}) })}`;
+  const href = (p: Record<string, string>) => `/admin/orders?${new URLSearchParams({ ...p, ...(status !== "All" ? { status } : {}), ...(q ? { q } : {}) })}`;
   const go = (p: Record<string, string>) => router.push(href(p));
   const shift = (days: number) => { const d = new Date(range.value + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + days); go({ date: d.toISOString().slice(0, 10) }); };
 

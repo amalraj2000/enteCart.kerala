@@ -1,4 +1,5 @@
 "use client";
+import SearchBox from "@/components/SearchBox";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Img from "@/components/Img";
@@ -14,7 +15,7 @@ import { discountPct, inr, productImages, type Category, type Product } from "@/
 
 const empty = { title: "", description: "", price: "", original_price: "", meesho_price: "", stock: "", sizes: "", category_id: "", status: "active", video_url: "", product_link: "", images: [] as string[] };
 
-export default function ProductManager({ products, categories, pi, staff, meId, by }: { products: (Product & { editable?: boolean })[]; categories: Category[]; pi: PageInfo; staff: { id: number; name: string }[]; meId: number; by: string }) {
+export default function ProductManager({ products, categories, pi, staff, meId, by, q = "" }: { products: (Product & { editable?: boolean })[]; categories: Category[]; pi: PageInfo; staff: { id: number; name: string }[]; meId: number; by: string; q?: string }) {
   const router = useRouter();
   const [form, setForm] = useState<Record<string, any>>(empty);
   const [editing, setEditing] = useState<number | null>(null);
@@ -211,9 +212,10 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
         <h1 className="text-xl font-bold">Products ({pi.total})</h1>
         <button className="btn-primary shrink-0" onClick={add}>+ Add product</button>
       </div>
+      <div className="mb-3"><SearchBox path="/admin/products" q={q} params={by !== "all" ? { by } : {}} placeholder="Search products by name" /></div>
       <div className="mb-4 flex items-center gap-2 text-sm">
         <label htmlFor="by" className="text-gray-500">Added by</label>
-        <select id="by" className="input !w-auto !py-1.5" value={by} onChange={(e) => router.push(e.target.value === "all" ? "/admin/products" : `/admin/products?by=${e.target.value}`)}>
+        <select id="by" className="input !w-auto !py-1.5" value={by} onChange={(e) => router.push("/admin/products?" + new URLSearchParams({ ...(e.target.value !== "all" ? { by: e.target.value } : {}), ...(q ? { q } : {}) }))}>
           <option value="all">All admins</option>
           {staff.map((s) => <option key={s.id} value={s.id}>{s.name}{s.id === meId ? " (me)" : ""}</option>)}
         </select>
@@ -253,11 +255,11 @@ export default function ProductManager({ products, categories, pi, staff, meId, 
                 </td>
               </tr>
             ))}
-            {!products.length && <tr><td colSpan={7} className="p-6 text-center text-gray-500">No products.</td></tr>}
+            {!products.length && <tr><td colSpan={7} className="p-6 text-center text-gray-500">{q ? `No products match “${q}”.` : "No products."}</td></tr>}
           </tbody>
         </table>
       </div>
-      <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/products?${new URLSearchParams({ ...(by !== "all" ? { by } : {}), ...(p > 1 ? { page: String(p) } : {}) })}`} />
+      <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/products?${new URLSearchParams({ ...(by !== "all" ? { by } : {}), ...(q ? { q } : {}), ...(p > 1 ? { page: String(p) } : {}) })}`} />
     </div>
   );
 }

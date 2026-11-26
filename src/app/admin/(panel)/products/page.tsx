@@ -9,7 +9,7 @@ import ProductManager from "./ProductManager";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ page?: string; by?: string }> }) {
+export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ page?: string; by?: string; q?: string }> }) {
   const sp = await searchParams;
   const me = await requireAdmin(); // the layout already guarantees staff
   const c = await db();
@@ -17,8 +17,11 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
 
   // "Added by" filter: all (default), me, or one specific admin
   const byId = sp.by === "me" ? me.id : parseId(sp.by);
-  const where = byId ? "WHERE p.created_by = ?" : "";
-  const args = byId ? [byId] : [];
+  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 60) : "";
+  const conds: string[] = [], args: (string | number)[] = [];
+  if (byId) { conds.push("p.created_by = ?"); args.push(byId); }
+  if (q) { conds.push("p.title LIKE ?"); args.push(`%${q.replace(/[%_]/g, "")}%`); }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
   const total = Number((await c.execute({ sql: `SELECT COUNT(*) AS n FROM products p ${where}`, args })).rows[0].n);
   const pi = pageInfo(total, parsePage(sp.page));
   const rows = (await c.execute({
@@ -30,5 +33,5 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   })).rows as unknown as Product[];
   const cats = (await c.execute("SELECT id, name, status FROM categories ORDER BY name")).rows as unknown as Category[];
   const withPerm = rows.map((r) => ({ ...JSON.parse(JSON.stringify(r)), editable: canEditRow(me, r.created_by) })); // sub admins edit only what they added
-  return <ProductManager products={withPerm} categories={JSON.parse(JSON.stringify(cats))} pi={pi} staff={JSON.parse(JSON.stringify(staff))} meId={me.id} by={byId ? String(byId) : "all"} />;
+  return <ProductManager products={withPerm} categories={JSON.parse(JSON.stringify(cats))} pi={pi} staff={JSON.parse(JSON.stringify(staff))} meId={me.id} by={byId ? String(byId) : "all"} q={q} />;
 }

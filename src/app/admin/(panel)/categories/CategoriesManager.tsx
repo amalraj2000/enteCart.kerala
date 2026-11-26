@@ -1,4 +1,5 @@
 "use client";
+import SearchBox from "@/components/SearchBox";
 import IconBtn from "@/components/IconBtn";
 import Link from "next/link";
 import { useState } from "react";
@@ -13,7 +14,7 @@ import type { Category } from "@/lib/types";
 
 type Cat = Category & { editable?: boolean; added_by_name?: string | null };
 
-export default function CategoriesManager({ categories, pi }: { categories: Cat[]; pi: PageInfo }) {
+export default function CategoriesManager({ categories, pi, q = "" }: { categories: Cat[]; pi: PageInfo; q?: string }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -41,6 +42,7 @@ export default function CategoriesManager({ categories, pi }: { categories: Cat[
   return (
     <div className="max-w-2xl space-y-4">
       <h1 className="text-xl font-bold">Categories ({pi.total})</h1>
+      <SearchBox path="/admin/categories" q={q} placeholder="Search categories by name" />
       <form onSubmit={add} noValidate className="card p-4">
         <label className="mb-1 block text-xs font-semibold text-gray-500">New category<Req /></label>
         <div className="flex gap-2">
@@ -65,9 +67,9 @@ export default function CategoriesManager({ categories, pi }: { categories: Cat[
                 </>}
           </div>
         ))}
-        {!categories.length && <p className="p-6 text-center text-gray-500">No categories yet.</p>}
+        {!categories.length && <p className="p-6 text-center text-gray-500">{q ? `No categories match “${q}”.` : "No categories yet."}</p>}
       </div>
-      <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/categories${p > 1 ? `?page=${p}` : ""}`} />
+      <Pagination page={pi.page} totalPages={pi.totalPages} total={pi.total} hrefFor={(p) => `/admin/categories?${new URLSearchParams({ ...(q ? { q } : {}), ...(p > 1 ? { page: String(p) } : {}) })}`} />
     </div>
   );
 }
