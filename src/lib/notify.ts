@@ -24,7 +24,7 @@ export async function notifyNewOrder(o: { id: number; adminUrl?: string; paidOnl
     const online = ord.payment_method === "online";
 
     const lines = [
-      `🛒 NEW ORDER #${o.id}`,
+      `🛒 NEW ORDER ${ord.order_no || "#" + o.id}`,
       online ? (o.paidOnline ? "💳 PAID ONLINE" : "💳 Online payment (pending)") : "💵 Cash on Delivery — collect on delivery",
       "",
       "👤 CUSTOMER",
@@ -94,7 +94,7 @@ export async function loadTgOrder(c: Client, id: number, o: { paidOnline?: boole
   const online = ord.payment_method === "online";
   const paid = o.paidOnline || ord.payment_status === "Paid";
   return {
-    id, payment: online ? (paid ? "online-paid" : "online-pending") : "cod", status: String(ord.status),
+    id, no: ord.order_no ? String(ord.order_no) : undefined, payment: online ? (paid ? "online-paid" : "online-pending") : "cod", status: String(ord.status),
     name: String(ord.customer_name), phone: String(ord.phone), house: String(ord.house_name), street: String(ord.street_name), city: String(ord.city), state: String(ord.state), pincode: String(ord.pincode),
     items: items.map((i) => ({ title: String(i.title), size: i.size ? String(i.size) : "", qty: Number(i.qty), price: Number(i.price) })), total: Number(ord.total), adminUrl: o.adminUrl,
   };

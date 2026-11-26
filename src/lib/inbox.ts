@@ -72,10 +72,4 @@ export function totals(v: Pick<InboxInput, "items" | "delivery_charge" | "discou
   return { subtotal, total };
 }
 
-/** "EC-2026-0001": yearly counter in `meta`, bumped inside the same write transaction that inserts the order (and UNIQUE order_no as a backstop). */
-export async function nextOrderNo(tx: { execute: (s: { sql: string; args: (string | number)[] }) => Promise<{ rows: unknown[] }> }): Promise<string> {
-  const year = istDay().slice(0, 4), key = `inbox_seq_${year}`;
-  await tx.execute({ sql: "INSERT INTO meta (key, value) VALUES (?, '1') ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)", args: [key] });
-  const r = (await tx.execute({ sql: "SELECT value FROM meta WHERE key = ?", args: [key] })).rows[0] as { value: unknown };
-  return `EC-${year}-${String(Number(r.value)).padStart(4, "0")}`;
-}
+export { nextOrderNo } from "./orderNo";

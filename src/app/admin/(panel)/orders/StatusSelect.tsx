@@ -10,7 +10,7 @@ const tone: Record<string, string> = {
 };
 
 /** Compact status dropdown for the orders list. Saves on change; the page refreshes so counts and filters stay right. */
-export default function StatusSelect({ id, status }: { id: number; status: string }) {
+export default function StatusSelect({ id, status, label }: { id: number; status: string; label?: string }) {
   const router = useRouter();
   const [v, setV] = useState(status);
   const [busy, setBusy] = useState(false);
@@ -20,13 +20,13 @@ export default function StatusSelect({ id, status }: { id: number; status: strin
     setV(next); setBusy(true);
     const r = await fetch(`/api/admin/orders/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: next }) });
     setBusy(false);
-    if (r.ok) toast.success(`Order #${id} marked ${next}`);
+    if (r.ok) toast.success(`Order ${label || "#" + id} marked ${next}`);
     else { setV(prev); toast.error((await r.json().catch(() => ({}))).error || "Could not update status"); }
     router.refresh();
   }
 
   return (
-    <select aria-label={`Status of order #${id}`} value={v} disabled={busy} onChange={(e) => change(e.target.value)}
+    <select aria-label={`Status of order ${label || "#" + id}`} value={v} disabled={busy} onChange={(e) => change(e.target.value)}
       className={`rounded-full border px-3 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand-200 disabled:opacity-60 ${tone[v] || ""}`}>
       {ORDER_STATUSES.map((s) => <option key={s}>{s}</option>)}
     </select>

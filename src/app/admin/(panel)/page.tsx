@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { parseId } from "@/lib/validate";
 import { staffNameSql, welcomeName } from "@/lib/staffLabel";
+import { orderLabel } from "@/lib/orderNo";
 import { inr } from "@/lib/types";
 import { formatIst, istDay, istMonth } from "@/lib/istDate";
 import { statusColor } from "@/components/OrderList";
@@ -57,7 +58,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       one("SELECT COUNT(*) n FROM products WHERE stock BETWEEN 1 AND 5"),
       one("SELECT COUNT(*) n FROM products WHERE stock = 0"),
       one("SELECT COUNT(*) n FROM reviews WHERE status = 'pending'"),
-      all("SELECT id, customer_name, total, status, created_at FROM orders ORDER BY id DESC LIMIT 5"),
+      all("SELECT id, order_no, customer_name, total, status, created_at FROM orders ORDER BY id DESC LIMIT 5"),
       all("SELECT id, title, stock FROM products WHERE stock <= 5 ORDER BY stock, title LIMIT 5"),
     ]);
   } else {
@@ -68,7 +69,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       one("SELECT COUNT(*) n FROM products WHERE created_by = ? AND stock BETWEEN 1 AND 5", [s]),
       one("SELECT COUNT(*) n FROM products WHERE created_by = ? AND stock = 0", [s]),
       one("SELECT COUNT(*) n FROM reviews r JOIN products p ON p.id = r.product_id WHERE r.status = 'pending' AND p.created_by = ?", [s]),
-      all(`SELECT o.id, o.customer_name, o.status, o.created_at, SUM(oi.qty * oi.price) AS total ${ITEMS} GROUP BY o.id ORDER BY o.id DESC LIMIT 5`, [s]),
+      all(`SELECT o.id, o.order_no, o.customer_name, o.status, o.created_at, SUM(oi.qty * oi.price) AS total ${ITEMS} GROUP BY o.id ORDER BY o.id DESC LIMIT 5`, [s]),
       all("SELECT id, title, stock FROM products WHERE created_by = ? AND stock <= 5 ORDER BY stock, title LIMIT 5", [s]),
     ]);
   }
@@ -117,7 +118,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               <tbody>
                 {recent.map((o) => (
                   <tr key={String(o.id)} className="border-t">
-                    <td className="py-2"><Link href={`/admin/orders/${o.id}`} className="font-semibold text-brand-700 hover:underline">#{String(o.id)}</Link><p className="text-xs text-gray-400">{formatIst(o.created_at).split(",")[0]}</p></td>
+                    <td className="py-2"><Link href={`/admin/orders/${o.id}`} className="font-semibold text-brand-700 hover:underline">{orderLabel(o)}</Link><p className="text-xs text-gray-400">{formatIst(o.created_at).split(",")[0]}</p></td>
                     <td className="py-2">{String(o.customer_name)}</td>
                     <td className="py-2"><span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusColor(String(o.status))}`}>{String(o.status)}</span></td>
                     <td className="py-2 text-right font-semibold">{inr(Number(o.total))}</td>

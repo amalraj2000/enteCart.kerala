@@ -1,3 +1,4 @@
+import { orderNoParts } from "@/lib/orderNo";
 import { after, NextResponse } from "next/server";
 import { notifyNewOrder } from "@/lib/notify";
 import { notifyStaffNewOrder } from "@/lib/notifications";
@@ -121,10 +122,12 @@ export async function POST(req: Request) {
     stmts.push({ sql: "UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?", args: [qty, id, qty] });
     stmts.push({ sql: "SELECT CASE WHEN changes() = 1 THEN 1 ELSE json('!') END", args: [] });
   }
+  const no = orderNoParts(); // EC-2026-0001: counter bump + insert are in the same atomic batch, so numbers never repeat
+  stmts.push(no.bump);
   stmts.push({
-    sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total, discount, payment_method, payment_status, public_id)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    args: [user.id, null, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total, discount, online ? "online" : "cod", online ? "Unpaid" : "Pending", publicId],
+    sql: `INSERT INTO orders (user_id, address_id, customer_name, phone, house_name, street_name, city, state, pincode, total, discount, payment_method, payment_status, public_id, order_no)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,${no.noSql})`,
+    args: [user.id, null, addr.customer_name, addr.phone, addr.house_name, addr.street_name, addr.city, addr.state, addr.pincode, total, discount, online ? "online" : "cod", online ? "Unpaid" : "Pending", publicId, ...no.noArgs],
   });
   // Writers are serialised by SQLite, so inside this one transaction this user's newest order IS the one just inserted.
   const newest = "(SELECT id FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 1)";

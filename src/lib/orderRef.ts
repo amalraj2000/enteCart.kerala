@@ -6,11 +6,11 @@ import { isPublicId } from "./publicId";
  * Resolves what is in the URL to the real order id — ONLY for the logged-in owner (user_id is part of the query).
  * Old numeric links still resolve for the owner, so bookmarks keep working (the pages then move to the opaque address).
  */
-export async function resolveOwnOrder(c: Client, userId: number, ref: string): Promise<{ id: number; publicId: string; paymentMethod: string } | null> {
+export async function resolveOwnOrder(c: Client, userId: number, ref: string): Promise<{ id: number; publicId: string; paymentMethod: string; orderNo: string } | null> {
   let r;
-  if (isPublicId(ref)) r = await c.execute({ sql: "SELECT id, public_id, payment_method FROM orders WHERE public_id = ? AND user_id = ?", args: [ref, userId] });
-  else if (/^\d{1,12}$/.test(ref)) r = await c.execute({ sql: "SELECT id, public_id, payment_method FROM orders WHERE id = ? AND user_id = ?", args: [Number(ref), userId] });
+  if (isPublicId(ref)) r = await c.execute({ sql: "SELECT id, public_id, payment_method, order_no FROM orders WHERE public_id = ? AND user_id = ?", args: [ref, userId] });
+  else if (/^\d{1,12}$/.test(ref)) r = await c.execute({ sql: "SELECT id, public_id, payment_method, order_no FROM orders WHERE id = ? AND user_id = ?", args: [Number(ref), userId] });
   else return null;
   const row = r.rows[0];
-  return row ? { id: Number(row.id), publicId: String(row.public_id || ""), paymentMethod: String(row.payment_method || "cod") } : null;
+  return row ? { id: Number(row.id), publicId: String(row.public_id || ""), paymentMethod: String(row.payment_method || "cod"), orderNo: String(row.order_no || "") } : null;
 }

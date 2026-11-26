@@ -4,6 +4,7 @@ import { statusColor } from "./OrderList";
 import { SHOP_VENDOR } from "@/lib/staffLabel";
 import { formatIst } from "@/lib/istDate";
 import { payLabel } from "@/lib/payLabel";
+import { orderLabel } from "@/lib/orderNo";
 import type { FullOrder, OrderItem } from "@/lib/orderItems";
 
 const STEPS = ["Placed", "Confirmed", "Shipped", "Delivered"];
@@ -18,7 +19,7 @@ export default function OrderDetail({ o, admin, actions, itemExtra }: { o: FullO
     <div className="space-y-5">
       <section className="card flex flex-wrap items-center gap-3 p-5">
         <div>
-          <h1 className="text-xl font-bold text-brand-700">Order #{o.id}</h1>
+          <h1 className="text-xl font-bold text-brand-700">Order {orderLabel(o)}</h1>
           <p className="text-sm text-gray-500">Placed on {formatIst(o.created_at)}</p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(o.status)}`}>{o.status}</span>

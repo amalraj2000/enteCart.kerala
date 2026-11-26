@@ -1,3 +1,4 @@
+import { orderLabel } from "@/lib/orderNo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -81,7 +82,7 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
           {orders.map((o) => (
             <div key={o.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="font-semibold"><Link href={`/admin/orders/${o.id}`} className="text-brand-700 hover:underline">Order #{o.id}</Link> <span className="ml-2 text-xs font-normal text-gray-500">{o.created_at}</span></p>
+                <p className="font-semibold"><Link href={`/admin/orders/${o.id}`} className="text-brand-700 hover:underline">Order {orderLabel(o)}</Link> <span className="ml-2 text-xs font-normal text-gray-500">{o.created_at}</span></p>
                 <ul className="text-sm text-gray-700">
                   {o.items.map((i, n) => <li key={n}>{i.title}{i.size && ` (${i.size})`} × {i.qty} — {inr(i.price * i.qty)}</li>)}
                 </ul>

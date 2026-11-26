@@ -1,6 +1,7 @@
 import { createClient, type Client } from "@libsql/client";
 import bcrypt from "bcryptjs";
 import { newPublicId } from "./publicId";
+import { nextOrderNo } from "./orderNo";
 
 let client: Client | null = null;
 let ready: Promise<void> | null = null;
@@ -339,7 +340,7 @@ export function db(): Promise<Client> {
   return ready.then(getClient);
 }
 
-const SCHEMA_VERSION = "2026-11-inbox-1";
+const SCHEMA_VERSION = "2026-11-orderno-1";
 
 async function setupSchema(c: Client) {
       await migrateToRelational(c);
@@ -425,6 +426,18 @@ async function setupSchema(c: Client) {
         "CREATE INDEX IF NOT EXISTS idx_inbox_hist_order ON inbox_order_history(order_id)",
         "CREATE INDEX IF NOT EXISTS idx_inbox_status ON inbox_orders(status)",
       ].map((sql) => ({ sql, args: [] })), "write");
+
+      // Friendly order numbers (EC-2026-0001) for storefront orders. Existing orders are numbered once, oldest first, from the same yearly counter inbox orders use.
+      await c.execute("ALTER TABLE orders ADD COLUMN order_no TEXT").catch(() => {}); // already exists
+      await c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_order_no ON orders(order_no)");
+      {
+        const tx = await c.transaction("write");
+        try {
+          const old = (await tx.execute("SELECT id, strftime('%Y', created_at, '+330 minutes') AS y FROM orders WHERE order_no IS NULL ORDER BY id")).rows;
+          for (const o of old) await tx.execute({ sql: "UPDATE orders SET order_no = ? WHERE id = ?", args: [await nextOrderNo(tx, String(o.y)), Number(o.id)] });
+          await tx.commit();
+        } catch (e) { await tx.rollback().catch(() => {}); throw e; } finally { tx.close(); }
+      }
 
       await ensureAdmin(c);
 

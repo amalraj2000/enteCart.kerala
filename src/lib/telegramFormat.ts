@@ -4,7 +4,7 @@
  * break the message or inject formatting. Dependency-free on purpose (pure text in, text out).
  */
 export type TgOrder = {
-  id: number;
+  id: number; no?: string;
   payment: "cod" | "online-paid" | "online-pending";
   name: string; phone: string; house: string; street: string; city: string; state: string; pincode: string;
   items: { title: string; size?: string; qty: number; price: number }[];
@@ -58,7 +58,7 @@ export function formatTelegramOrder(o: TgOrder): string {
   const addr = `${o.house}, ${o.street}\n${o.city}, ${o.state} - ${o.pincode}`;
   const customer = [`📛 <b>Name</b>\n<code>${esc(o.name)}</code>`, `📞 <b>Phone</b>\n<code>${esc(o.phone)}</code>`, `📍 <b>Delivery address</b>\n<code>${esc(addr)}</code>`].join("\n\n");
   const build = (titleLines: number) => [
-    `🛒 <b>NEW ORDER #${o.id}</b>`,
+    `🛒 <b>NEW ORDER ${o.no || "#" + o.id}</b>`,
     pay,
     ...(o.status ? [`📌 Status: <b>${esc(o.status)}</b>`] : []), "",
     "👤 <b>CUSTOMER</b> (tap a value to copy)", customer, "",
@@ -85,7 +85,7 @@ export function telegramKeyboard(o: TgOrder, opts: { actions?: boolean; confirmC
   const copy = (text: string, c: string) => ({ text, copy_text: { text: cut(c) } });
   const rows: object[][] = [];
   if (opts.actions && opts.confirmCancel) {
-    rows.push([{ text: `⚠️ Yes, cancel #${o.id}`, callback_data: `os:${o.id}:Cancelled` }, { text: "↩️ No, keep it", callback_data: `ob:${o.id}` }]);
+    rows.push([{ text: `⚠️ Yes, cancel ${o.no || "#" + o.id}`, callback_data: `os:${o.id}:Cancelled` }, { text: "↩️ No, keep it", callback_data: `ob:${o.id}` }]);
   } else if (opts.actions) {
     for (const [label, st] of STATUS_BUTTONS[o.status || ""] ?? []) rows.push([{ text: label, callback_data: st === "Cancelled" ? `oc:${o.id}` : `os:${o.id}:${st}` }]);
   }

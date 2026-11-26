@@ -1,3 +1,4 @@
+import { orderLabel } from "@/lib/orderNo";
 import Link from "next/link";
 import Img from "./Img";
 import IconBtn from "./IconBtn";
@@ -20,7 +21,7 @@ export default function OrderRow({ o, href, extra, statusControl, iconView }: { 
       </div>
       <div className="min-w-0 flex-1 basis-48">
         <p className="truncate font-semibold">{first?.title || "Order"}{more > 0 && <span className="font-normal text-gray-500"> and {more} more</span>}</p>
-        <p className="text-sm text-gray-500">Order #{o.id} · {formatIst(o.created_at)}</p>
+        <p className="text-sm text-gray-500">Order {orderLabel(o)} · {formatIst(o.created_at)}</p>
         <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${payLabel(o).tone}`}>{o.payment_method === "online" ? "💳 " : "💵 "}{payLabel(o).text}</span>
         {extra}
         {owners.length > 0 && <p className="text-xs text-gray-500">🛍️ Products by <span className="font-medium text-gray-700">{owners.join(", ")}</span></p>}
@@ -29,7 +30,7 @@ export default function OrderRow({ o, href, extra, statusControl, iconView }: { 
         {statusControl ?? <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(o.status)}`}>{o.status}</span>}
         <span className="font-bold text-brand-700">{inr(o.total)}</span>
       </div>
-      {iconView ? <IconBtn kind="view" label={`View order #${o.id}`} href={href} /> : <Link href={href} className="btn-outline">View</Link>}
+      {iconView ? <IconBtn kind="view" label={`View order ${orderLabel(o)}`} href={href} /> : <Link href={href} className="btn-outline">View</Link>}
     </div>
   );
 }

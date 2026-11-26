@@ -23,7 +23,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
     <div className="space-y-4">
       <Link href="/admin/orders" className="text-sm font-medium text-brand-700 hover:underline">← Back to orders</Link>
       <OrderDetail o={o} admin actions={canChange
-        ? <StatusControl id={o.id} status={o.status} statuses={ORDER_STATUSES} />
+        ? <StatusControl label={o.order_no || undefined} id={o.id} status={o.status} statuses={ORDER_STATUSES} />
         : <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500" title="This order has none of your products">View only</span>} />
     </div>
   );

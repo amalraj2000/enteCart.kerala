@@ -27,8 +27,8 @@ export async function expireUnpaidOrders(c: Client) {
       const u = await c.execute({ sql: "UPDATE orders SET status = 'Cancelled' WHERE id = ? AND payment_status = 'Unpaid' AND status = 'Placed'", args: [id] });
       if (u.rowsAffected === 1) {
         await restockOrder(c, id); revalidateCatalogSoon();
-        const o = (await c.execute({ sql: "SELECT user_id, public_id FROM orders WHERE id = ?", args: [id] })).rows[0];
-        if (o?.user_id) await notifyUser(c, Number(o.user_id), { type: "order", title: `Order #${id} cancelled`, body: "Your online payment was not completed in time, so the order was cancelled. You can place it again anytime.", link: `/orders/${o.public_id || id}` });
+        const o = (await c.execute({ sql: "SELECT user_id, public_id, order_no FROM orders WHERE id = ?", args: [id] })).rows[0];
+        if (o?.user_id) await notifyUser(c, Number(o.user_id), { type: "order", title: `Order ${o.order_no || "#" + id} cancelled`, body: "Your online payment was not completed in time, so the order was cancelled. You can place it again anytime.", link: `/orders/${o.public_id || id}` });
       }
     }
   } catch { /* housekeeping must never break the request that triggered it */ }

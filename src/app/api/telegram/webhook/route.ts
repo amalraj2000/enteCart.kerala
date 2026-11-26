@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   let note = "";
   if (kind === "os") {
     const r = await changeOrderStatus(c, id, status, null);
-    note = r.ok ? `Order #${id} → ${status}` : r.error;
+    note = r.ok ? `Order ${(await c.execute({ sql: "SELECT order_no FROM orders WHERE id = ?", args: [id] })).rows[0]?.order_no || "#" + id} → ${status}` : r.error;
   }
   const o = await loadTgOrder(c, id, { adminUrl });
   if (!o) { await answer("Order not found"); return NextResponse.json({ ok: true }); }

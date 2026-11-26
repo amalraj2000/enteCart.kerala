@@ -20,14 +20,15 @@ export async function notifyUser(c: Client, userId: number | null | undefined, n
   } catch (e) { console.error("Notification failed:", (e as Error).message); }
 }
 
+const lbl = (x: number | string) => (typeof x === "number" ? `#${x}` : x);
 /** What the customer is told when the shop moves their order to a new status. */
-export function orderStatusNotice(orderId: number, status: string): { title: string; body: string } | null {
+export function orderStatusNotice(orderId: number | string, status: string): { title: string; body: string } | null {
   switch (status) {
-    case "Confirmed": return { title: `Order #${orderId} confirmed`, body: "We have confirmed your order and are getting it ready." };
-    case "Shipped": return { title: `Order #${orderId} shipped`, body: "Your order is on its way to you." };
-    case "Delivered": return { title: `Order #${orderId} delivered`, body: "Your order has been delivered. You can now rate and review your products." };
-    case "Cancelled": return { title: `Order #${orderId} cancelled`, body: "Your order was cancelled by the shop. If you paid online, your refund will be processed to the original payment method." };
-    case "Placed": return { title: `Order #${orderId} re-opened`, body: "Your cancelled order has been re-opened." };
+    case "Confirmed": return { title: `Order ${lbl(orderId)} confirmed`, body: "We have confirmed your order and are getting it ready." };
+    case "Shipped": return { title: `Order ${lbl(orderId)} shipped`, body: "Your order is on its way to you." };
+    case "Delivered": return { title: `Order ${lbl(orderId)} delivered`, body: "Your order has been delivered. You can now rate and review your products." };
+    case "Cancelled": return { title: `Order ${lbl(orderId)} cancelled`, body: "Your order was cancelled by the shop. If you paid online, your refund will be processed to the original payment method." };
+    case "Placed": return { title: `Order ${lbl(orderId)} re-opened`, body: "Your cancelled order has been re-opened." };
     default: return null;
   }
 }
@@ -75,16 +76,16 @@ async function superAdminIds(c: Client): Promise<number[]> {
 
 /** A new order was placed (COD: right away, online: once it is paid). */
 export async function notifyStaffNewOrder(c: Client, orderId: number, paidOnline = false): Promise<void> {
-  try { await orderEvent(c, orderId, (id, name, amount, mine) => ({ type: "order", title: `New order #${id}`, body: `${name} · ${inr(amount)}${mine ? " for your products" : paidOnline ? " · paid online" : ""}` })); }
+  try { await orderEvent(c, orderId, (id, name, amount, mine) => ({ type: "order", title: `New order ${id}`, body: `${name} · ${inr(amount)}${mine ? " for your products" : paidOnline ? " · paid online" : ""}` })); }
   catch (e) { console.error("Staff notification failed:", (e as Error).message); }
 }
 /** The customer cancelled their own order. */
 export async function notifyStaffOrderCancelled(c: Client, orderId: number): Promise<void> {
-  try { await orderEvent(c, orderId, (id, name, amount, mine) => ({ type: "order", title: `Order #${id} cancelled by the customer`, body: `${name} · ${inr(amount)}${mine ? " for your products" : ""}` })); }
+  try { await orderEvent(c, orderId, (id, name, amount, mine) => ({ type: "order", title: `Order ${id} cancelled by the customer`, body: `${name} · ${inr(amount)}${mine ? " for your products" : ""}` })); }
   catch (e) { console.error("Staff notification failed:", (e as Error).message); }
 }
-async function orderEvent(c: Client, orderId: number, make: (id: number, name: string, amount: number, mine: boolean) => Omit<NotifyInput, "link">) {
-  const o = (await c.execute({ sql: "SELECT customer_name, total FROM orders WHERE id = ?", args: [orderId] })).rows[0];
+async function orderEvent(c: Client, orderId: number, make: (id: string, name: string, amount: number, mine: boolean) => Omit<NotifyInput, "link">) {
+  const o = (await c.execute({ sql: "SELECT customer_name, total, order_no FROM orders WHERE id = ?", args: [orderId] })).rows[0];
   if (!o) return;
   const link = `/admin/orders/${orderId}`, name = String(o.customer_name || "A customer");
   const owners = (await c.execute({
@@ -93,8 +94,8 @@ async function orderEvent(c: Client, orderId: number, make: (id: number, name: s
     args: [orderId],
   })).rows;
   const supers = await superAdminIds(c);
-  for (const id of supers) await notifyUser(c, id, { ...make(orderId, name, Number(o.total), false), link });
-  for (const r of owners) await notifyUser(c, Number(r.uid), { ...make(orderId, name, Number(r.share), true), link });
+  for (const id of supers) await notifyUser(c, id, { ...make(String(o.order_no || `#${orderId}`), name, Number(o.total), false), link });
+  for (const r of owners) await notifyUser(c, Number(r.uid), { ...make(String(o.order_no || `#${orderId}`), name, Number(r.share), true), link });
 }
 
 /** A customer submitted a review (or edited one, which sends it back for approval). */

@@ -23,7 +23,7 @@ export type StatusResult = { ok: true; unchanged?: boolean } | { ok: false; erro
  * their own private Telegram chat, which is already restricted to the owner's chat ids.
  */
 export async function changeOrderStatus(c: Client, id: number, next: string, actor: { id: number; role: StaffRole } | null): Promise<StatusResult> {
-  const cur = (await c.execute({ sql: "SELECT status, payment_status, payment_method, user_id, public_id FROM orders WHERE id = ?", args: [id] })).rows[0];
+  const cur = (await c.execute({ sql: "SELECT status, payment_status, payment_method, user_id, public_id, order_no FROM orders WHERE id = ?", args: [id] })).rows[0];
   if (!cur) return { ok: false, error: "Order not found", status: 404 };
   if (actor && !(await editableOrderIds(c, actor, [id])).has(id)) return { ok: false, error: "You can only update orders that include products you added", status: 403 };
   const prev = String(cur.status);
@@ -42,7 +42,7 @@ export async function changeOrderStatus(c: Client, id: number, next: string, act
     return { ok: false, error: "This order was just changed by someone else — please reload.", status: 409 };
   }
   if (next === "Cancelled") await restockOrder(c, id);
-  const notice = orderStatusNotice(id, next); // tell the customer (bell in their header)
+  const notice = orderStatusNotice(cur.order_no ? String(cur.order_no) : id, next); // tell the customer (bell in their header)
   if (notice && cur.user_id) await notifyUser(c, Number(cur.user_id), { type: "order", ...notice, link: `/orders/${cur.public_id || id}` });
   revalidateCatalog();
   return { ok: true };

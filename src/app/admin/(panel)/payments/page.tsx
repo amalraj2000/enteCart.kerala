@@ -1,3 +1,4 @@
+import { orderLabel } from "@/lib/orderNo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -26,7 +27,7 @@ export default async function Payments({ searchParams }: { searchParams: Promise
   const sums = (await c.execute(`SELECT COALESCE(SUM(CASE WHEN p.status='Paid' THEN p.amount END),0) paid, COALESCE(SUM(CASE WHEN p.status='Paid' AND o.status='Cancelled' THEN p.amount END),0) due, COALESCE(SUM(CASE WHEN p.status='Refunded' THEN p.amount END),0) refunded ${from}`)).rows[0];
   const pi = pageInfo(total, parsePage(sp.page));
   const rows = (await c.execute({
-    sql: `SELECT p.*, o.status AS order_status, o.customer_name, o.phone ${from} WHERE ${where} ORDER BY p.id DESC LIMIT ${PAGE_SIZE} OFFSET ?`, args: [pi.offset],
+    sql: `SELECT p.*, o.status AS order_status, o.order_no, o.customer_name, o.phone ${from} WHERE ${where} ORDER BY p.id DESC LIMIT ${PAGE_SIZE} OFFSET ?`, args: [pi.offset],
   })).rows;
   const href = (x: string, page = 1) => `/admin/payments?${new URLSearchParams({ ...(x !== "All" ? { f: x } : {}), ...(page > 1 ? { page: String(page) } : {}) })}`;
   return (
@@ -52,7 +53,7 @@ export default async function Payments({ searchParams }: { searchParams: Promise
                 const due = p.status === "Paid" && p.order_status === "Cancelled";
                 return (
                   <tr key={Number(p.id)} className="align-top">
-                    <td className="p-3"><Link className="font-semibold text-brand-700 hover:underline" href={`/admin/orders/${p.order_id}`}>#{String(p.order_id)}</Link><div className="text-xs text-gray-500">{String(p.order_status)}</div></td>
+                    <td className="p-3"><Link className="font-semibold text-brand-700 hover:underline" href={`/admin/orders/${p.order_id}`}>{orderLabel({ id: p.order_id, order_no: p.order_no })}</Link><div className="text-xs text-gray-500">{String(p.order_status)}</div></td>
                     <td className="p-3">{String(p.customer_name)}<div className="text-xs text-gray-500">{String(p.phone)}</div></td>
                     <td className="p-3 font-semibold">{inr(Number(p.amount))}</td>
                     <td className="p-3">{p.method ? <span className="capitalize">{String(p.method)}</span> : "—"}<div className="text-xs text-gray-500">{String(p.method_detail || "")}</div></td>
